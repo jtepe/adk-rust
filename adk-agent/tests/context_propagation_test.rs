@@ -203,7 +203,7 @@ async fn test_tool_context_propagation() {
     let mut stream = agent.run(ctx).await.unwrap();
 
     // Consume stream to trigger tool execution
-    while let Some(_) = stream.next().await {}
+    while (stream.next().await).is_some() {}
 
     // Verify captured context
     let captured_user = tool.captured_user_id.lock().unwrap().clone();

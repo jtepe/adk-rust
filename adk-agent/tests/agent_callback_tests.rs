@@ -62,7 +62,7 @@ async fn test_before_agent_callback() {
 
     let ctx = Arc::new(TestContext::new("test"));
     let mut stream = agent.run(ctx).await.unwrap();
-    while let Some(_) = stream.next().await {}
+    while (stream.next().await).is_some() {}
 
     assert!(*callback_called.lock().unwrap(), "BeforeAgent callback should execute");
 }
