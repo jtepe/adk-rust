@@ -70,7 +70,7 @@ impl Runner {
             let artifact_service_clone = artifact_service.clone();
             let memory_service_clone = memory_service.clone();
 
-            // Create invocation context
+            // Create invocation context with MutableSession
             let invocation_id = format!("inv-{}", uuid::Uuid::new_v4());
             let mut ctx = InvocationContext::new(
                 invocation_id.clone(),
@@ -99,10 +99,14 @@ impl Runner {
 
             let ctx = Arc::new(ctx);
 
-            // Append user message to session
+            // Append user message to session service (persistent storage)
             let mut user_event = adk_core::Event::new(&invocation_id);
             user_event.author = "user".to_string();
             user_event.llm_response.content = Some(user_content.clone());
+
+            // Also add to mutable session for immediate visibility
+            // Note: adk_session::Event is a re-export of adk_core::Event, so we can use it directly
+            ctx.mutable_session().append_event(user_event.clone());
 
             if let Err(e) = session_service.append_event(&session_id, user_event).await {
                 yield Err(e);
@@ -110,7 +114,7 @@ impl Runner {
             }
 
             // Run the agent
-            let mut agent_stream = match agent_to_run.run(ctx).await {
+            let mut agent_stream = match agent_to_run.run(ctx.clone()).await {
                 Ok(s) => s,
                 Err(e) => {
                     yield Err(e);
@@ -130,7 +134,19 @@ impl Runner {
                             transfer_target = Some(target.clone());
                         }
 
-                        // Append event to session (Event types are now unified)
+                        // CRITICAL: Apply state_delta to the mutable session immediately.
+                        // This is the key fix for state propagation between sequential agents.
+                        // When an agent sets output_key, it emits an event with state_delta.
+                        // We must apply this to the mutable session so downstream agents
+                        // can read the value via ctx.session().state().get().
+                        if !event.actions.state_delta.is_empty() {
+                            ctx.mutable_session().apply_state_delta(&event.actions.state_delta);
+                        }
+
+                        // Also add the event to the mutable session's event list
+                        ctx.mutable_session().append_event(event.clone());
+
+                        // Append event to session service (persistent storage)
                         if let Err(e) = session_service.append_event(&session_id, event.clone()).await {
                             yield Err(e);
                             return;
@@ -147,34 +163,16 @@ impl Runner {
             // If a transfer was requested, automatically invoke the target agent
             if let Some(target_name) = transfer_target {
                 if let Some(target_agent) = Self::find_agent(&root_agent, &target_name) {
-                    // Get fresh session state
-                    let transfer_session = match session_service
-                        .get(adk_session::GetRequest {
-                            app_name: app_name.clone(),
-                            user_id: user_id.clone(),
-                            session_id: session_id.clone(),
-                            num_recent_events: None,
-                            after: None,
-                        })
-                        .await
-                    {
-                        Ok(s) => s,
-                        Err(e) => {
-                            yield Err(e);
-                            return;
-                        }
-                    };
-
-                    // Create new context for the transferred agent
+                    // For transfers, we reuse the same mutable session to preserve state
                     let transfer_invocation_id = format!("inv-{}", uuid::Uuid::new_v4());
-                    let mut transfer_ctx = InvocationContext::new(
+                    let mut transfer_ctx = InvocationContext::with_mutable_session(
                         transfer_invocation_id.clone(),
                         target_agent.clone(),
                         user_id.clone(),
                         app_name.clone(),
                         session_id.clone(),
                         user_content.clone(),
-                        Arc::from(transfer_session),
+                        ctx.mutable_session().clone(),
                     );
 
                     if let Some(service) = artifact_service_clone {
@@ -193,7 +191,7 @@ impl Runner {
                     let transfer_ctx = Arc::new(transfer_ctx);
 
                     // Run the transferred agent
-                    let mut transfer_stream = match target_agent.run(transfer_ctx).await {
+                    let mut transfer_stream = match target_agent.run(transfer_ctx.clone()).await {
                         Ok(s) => s,
                         Err(e) => {
                             yield Err(e);
@@ -205,6 +203,14 @@ impl Runner {
                     while let Some(result) = transfer_stream.next().await {
                         match result {
                             Ok(event) => {
+                                // Apply state delta for transferred agent too
+                                if !event.actions.state_delta.is_empty() {
+                                    transfer_ctx.mutable_session().apply_state_delta(&event.actions.state_delta);
+                                }
+
+                                // Add to mutable session
+                                transfer_ctx.mutable_session().append_event(event.clone());
+
                                 if let Err(e) = session_service.append_event(&session_id, event.clone()).await {
                                     yield Err(e);
                                     return;
@@ -281,5 +287,3 @@ impl Runner {
         None
     }
 }
-
-// TODO: Add unit tests for transfer logic

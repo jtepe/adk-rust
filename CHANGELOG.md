@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-12-07
+
+### Fixed
+- **Critical bug**: SequentialAgent now correctly propagates state between agents via `output_key`
+  - Root cause: InvocationContext held an immutable snapshot of session state
+  - Solution: Implemented `MutableSession` wrapper (matching ADK-Go's pattern) that allows
+    state changes from `state_delta` to be immediately visible to downstream agents
+  - This fix enables proper use of `output_key` in sequential/parallel agent workflows
+
+### Added
+- `MutableSession` struct in `adk-runner` for shared mutable session state
+- `InvocationContext::with_mutable_session()` constructor for sharing sessions across contexts
+- `InvocationContext::mutable_session()` accessor for the underlying mutable session
+- New tests for `MutableSession` state propagation behavior
+- New example: `structured_output` demonstrating JSON schema output constraints
+
+### Changed
+- `InvocationContext` now internally uses `MutableSession` instead of immutable `SessionAdapter`
+- Runner applies `state_delta` from events to the mutable session immediately after each event
+- Agent transfers now share the same `MutableSession` to preserve state
+
 ## [0.1.1] - 2025-11-30
 
 ### Fixed
@@ -69,6 +90,7 @@ Initial release - Published to crates.io.
 - Tokio async runtime
 - Google API key for Gemini
 
-[Unreleased]: https://github.com/zavora-ai/adk-rust/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/zavora-ai/adk-rust/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/zavora-ai/adk-rust/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/zavora-ai/adk-rust/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/zavora-ai/adk-rust/releases/tag/v0.1.0

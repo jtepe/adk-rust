@@ -42,5 +42,5 @@ mod runner;
 pub use callbacks::{
     AfterModelCallback, AfterToolCallback, BeforeModelCallback, BeforeToolCallback, Callbacks,
 };
-pub use context::InvocationContext;
+pub use context::{InvocationContext, MutableSession};
 pub use runner::{Runner, RunnerConfig};

@@ -59,6 +59,14 @@ path = "research_paper/main.rs"
 name = "agent_tool"
 path = "agent_tool/main.rs"
 
+[[example]]
+name = "template"
+path = "template/main.rs"
+
+[[example]]
+name = "structured_output"
+path = "structured_output/main.rs"
+
 [dependencies]
 adk-core = { path = "../adk-core" }
 adk-agent = { path = "../adk-agent" }
@@ -79,3 +87,4 @@ chrono = "0.4"
 tracing-subscriber = "0.3"
 axum = "0.7"
 async-trait = "0.1"
+dotenv = "0.15"

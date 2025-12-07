@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "adk-agent"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-core",
  "adk-model",
@@ -31,7 +31,7 @@ dependencies = [
 
 [[package]]
 name = "adk-artifact"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-core",
  "async-trait",
@@ -40,7 +40,7 @@ dependencies = [
 
 [[package]]
 name = "adk-cli"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-agent",
  "adk-artifact",
@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "adk-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -93,6 +93,7 @@ dependencies = [
  "async-trait",
  "axum 0.7.9",
  "chrono",
+ "dotenv",
  "futures",
  "serde",
  "serde_json",
@@ -102,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "adk-memory"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-core",
  "async-trait",
@@ -112,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "adk-model"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-core",
  "adk-telemetry",
@@ -129,7 +130,7 @@ dependencies = [
 
 [[package]]
 name = "adk-runner"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-artifact",
  "adk-core",
@@ -145,7 +146,7 @@ dependencies = [
 
 [[package]]
 name = "adk-rust"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-agent",
  "adk-artifact",
@@ -168,7 +169,7 @@ dependencies = [
 
 [[package]]
 name = "adk-server"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-agent",
  "adk-artifact",
@@ -202,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "adk-session"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-core",
  "async-trait",
@@ -216,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "adk-telemetry"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
@@ -230,7 +231,7 @@ dependencies = [
 
 [[package]]
 name = "adk-tool"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "adk-core",
  "adk-telemetry",
