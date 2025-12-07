@@ -25,14 +25,21 @@ pub fn content_to_message(content: &Content) -> ChatCompletionRequestMessage {
             let mut builder = ChatCompletionRequestAssistantMessageArgs::default();
 
             // Extract text content
-            if let Some(text) = get_text_content(&content.parts) {
-                builder.content(text);
+            let text_content = get_text_content(&content.parts);
+            if let Some(ref text) = text_content {
+                builder.content(text.clone());
             }
 
             // Extract tool calls
             let tool_calls = extract_tool_calls(&content.parts);
             if !tool_calls.is_empty() {
-                builder.tool_calls(tool_calls);
+                builder.tool_calls(tool_calls.clone());
+            }
+
+            // OpenAI requires assistant messages to have either content or tool_calls
+            // If both are empty, provide a placeholder to avoid 400 Bad Request
+            if text_content.is_none() && tool_calls.is_empty() {
+                builder.content(" ".to_string()); // Minimal non-empty content
             }
 
             builder.build().unwrap().into()
@@ -191,7 +198,7 @@ pub fn from_openai_response(resp: &CreateChatCompletionResponse) -> LlmResponse 
 
 /// Convert OpenAI stream chunk to ADK LlmResponse.
 pub fn from_openai_chunk(chunk: &CreateChatCompletionStreamResponse) -> LlmResponse {
-    let content = chunk.choices.first().map(|choice| {
+    let content = chunk.choices.first().and_then(|choice| {
         let mut parts = Vec::new();
 
         // Add text content from delta
@@ -223,7 +230,13 @@ pub fn from_openai_chunk(chunk: &CreateChatCompletionStreamResponse) -> LlmRespo
             }
         }
 
-        Content { role: "model".to_string(), parts }
+        // Only return content if there are actual parts
+        // This prevents empty Content from being accumulated in conversation history
+        if parts.is_empty() {
+            None
+        } else {
+            Some(Content { role: "model".to_string(), parts })
+        }
     });
 
     let finish_reason = chunk.choices.first().and_then(|c| c.finish_reason).map(|fr| match fr {

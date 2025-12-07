@@ -92,6 +92,31 @@ name = "test_llm_direct"
 path = "test_llm_direct/main.rs"
 required-features = ["openai"]
 
+[[example]]
+name = "openai_parallel"
+path = "openai_parallel/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "openai_loop"
+path = "openai_loop/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "openai_agent_tool"
+path = "openai_agent_tool/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "openai_structured"
+path = "openai_structured/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "debug_openai_error"
+path = "debug_openai_error/main.rs"
+required-features = ["openai"]
+
 [features]
 default = []
 openai = ["adk-model/openai"]
