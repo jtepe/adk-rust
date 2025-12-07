@@ -80,7 +80,7 @@ ADK-Rust follows a clean layered architecture from application interface down to
 |-------|---------|--------------|
 | `adk-core` | Foundational traits and types | `Agent` trait, `Content`, `Part`, error types, streaming primitives |
 | `adk-agent` | Agent implementations | `LlmAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`, builder patterns |
-| `adk-model` | LLM integrations | Gemini API client, `GenerativeModel` trait, streaming, function calling |
+| `adk-model` | LLM integrations | Gemini, OpenAI, Anthropic clients, streaming, function calling |
 | `adk-tool` | Tool system and extensibility | `FunctionTool`, Google Search, MCP protocol, schema validation |
 | `adk-session` | Session and state management | SQLite/in-memory backends, conversation history, state persistence |
 | `adk-artifact` | Artifact storage system | File-based storage, MIME type handling, image/PDF/video support |
@@ -237,7 +237,7 @@ Contributions welcome! Please open an issue or pull request on GitHub.
 
 **Implemented**:
 - Core framework and agent types
-- Model integration (Gemini)
+- Multi-provider LLM support (Gemini, OpenAI, Anthropic)
 - Tool system with MCP support
 - Agent Tool - Use agents as callable tools
 - Session and artifact management

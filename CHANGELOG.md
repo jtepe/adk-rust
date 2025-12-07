@@ -9,24 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - 2025-12-07
 
-### Fixed
-- **Critical bug**: SequentialAgent now correctly propagates state between agents via `output_key`
-  - Root cause: InvocationContext held an immutable snapshot of session state
-  - Solution: Implemented `MutableSession` wrapper (matching ADK-Go's pattern) that allows
-    state changes from `state_delta` to be immediately visible to downstream agents
-  - This fix enables proper use of `output_key` in sequential/parallel agent workflows
-
 ### Added
+- **OpenAI provider support**: Full integration with OpenAI's GPT models
+  - `OpenAIClient` and `OpenAIConfig` for easy configuration
+  - Streaming support with proper tool call accumulation
+  - Compatible with GPT-4o, GPT-4o-mini, GPT-4-turbo, GPT-3.5-turbo
+  - Feature flag: `adk-model = { features = ["openai"] }`
+- **Anthropic provider support**: Full integration with Anthropic's Claude models
+  - `AnthropicClient` and `AnthropicConfig` using the `claudius` crate
+  - Streaming support with tool call support
+  - Compatible with Claude Opus 4.5, Claude Sonnet 4.5, Claude 3.5 Sonnet, Claude 3 Opus
+  - Feature flag: `adk-model = { features = ["anthropic"] }`
+- New feature flag `all-providers` to enable Gemini, OpenAI, and Anthropic together
+- 16 new OpenAI examples covering all ADK features:
+  - `openai_basic`, `openai_tools`, `openai_workflow`, `openai_template`
+  - `openai_parallel`, `openai_loop`, `openai_agent_tool`, `openai_structured`
+  - `openai_artifacts`, `openai_mcp`, `openai_a2a`, `openai_server`, `openai_web`
+  - `openai_sequential_code`, `openai_research_paper`, `debug_openai_error`
+- 2 new Anthropic examples: `anthropic_basic`, `anthropic_tools`
 - `MutableSession` struct in `adk-runner` for shared mutable session state
 - `InvocationContext::with_mutable_session()` constructor for sharing sessions across contexts
 - `InvocationContext::mutable_session()` accessor for the underlying mutable session
 - New tests for `MutableSession` state propagation behavior
 - New example: `structured_output` demonstrating JSON schema output constraints
 
+### Fixed
+- **Critical bug**: SequentialAgent now correctly propagates state between agents via `output_key`
+  - Root cause: InvocationContext held an immutable snapshot of session state
+  - Solution: Implemented `MutableSession` wrapper (matching ADK-Go's pattern) that allows
+    state changes from `state_delta` to be immediately visible to downstream agents
+  - This fix enables proper use of `output_key` in sequential/parallel agent workflows
+- OpenAI 400 Bad Request errors caused by empty assistant messages (added placeholder content)
+- OpenAI streaming empty Content accumulation issue
+
 ### Changed
 - `InvocationContext` now internally uses `MutableSession` instead of immutable `SessionAdapter`
 - Runner applies `state_delta` from events to the mutable session immediately after each event
 - Agent transfers now share the same `MutableSession` to preserve state
+- Updated README documentation with multi-provider examples
 
 ## [0.1.1] - 2025-11-30
 
