@@ -200,6 +200,10 @@ path = "graph_openai/main.rs"
 required-features = ["openai"]
 
 [[example]]
+name = "graph_gemini"
+path = "graph_gemini/main.rs"
+
+[[example]]
 name = "graph_agent"
 path = "graph_agent/main.rs"
 
@@ -219,12 +223,68 @@ path = "graph_supervisor/main.rs"
 name = "graph_checkpoint"
 path = "graph_checkpoint/main.rs"
 
+[[example]]
+name = "eval_basic"
+path = "eval_basic/main.rs"
+
+[[example]]
+name = "eval_trajectory"
+path = "eval_trajectory/main.rs"
+
+[[example]]
+name = "eval_similarity"
+path = "eval_similarity/main.rs"
+
+[[example]]
+name = "eval_semantic"
+path = "eval_semantic/main.rs"
+
+[[example]]
+name = "eval_rubric"
+path = "eval_rubric/main.rs"
+
+[[example]]
+name = "eval_report"
+path = "eval_report/main.rs"
+
+[[example]]
+name = "eval_llm_gemini"
+path = "eval_llm_gemini/main.rs"
+
+[[example]]
+name = "eval_llm_openai"
+path = "eval_llm_openai/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "eval_agent"
+path = "eval_agent/main.rs"
+
+[[example]]
+name = "eval_graph"
+path = "eval_graph/main.rs"
+
+[[example]]
+name = "eval_realtime"
+path = "eval_realtime/main.rs"
+
+[[example]]
+name = "browser_basic"
+path = "browser_basic/main.rs"
+required-features = ["browser"]
+
+[[example]]
+name = "browser_test"
+path = "browser_test/main.rs"
+required-features = ["browser"]
+
 [features]
 default = []
 openai = ["adk-model/openai"]
 anthropic = ["adk-model/anthropic"]
 realtime-openai = ["adk-realtime/openai"]
 realtime-gemini = ["adk-realtime/gemini"]
+browser = ["dep:adk-browser", "dep:reqwest"]
 
 [dependencies]
 adk-core = { path = "../adk-core" }
@@ -239,7 +299,10 @@ adk-server = { path = "../adk-server" }
 adk-memory = { path = "../adk-memory" }
 adk-realtime = { path = "../adk-realtime" }
 adk-graph = { path = "../adk-graph" }
+adk-eval = { path = "../adk-eval" }
+adk-browser = { path = "../adk-browser", optional = true }
 tokio = { version = "1.40", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"], optional = true }
 base64 = "0.22"
 anyhow = "1.0"
 futures = "0.3"
