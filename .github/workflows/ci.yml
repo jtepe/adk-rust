@@ -13,6 +13,8 @@ env:
   CARGO_INCREMENTAL: 0
   # Fail fast on cache corruption to allow retry
   CACHE_ON_FAILURE: false
+  # Use single-threaded linker to reduce memory usage
+  RUSTFLAGS: "-C link-arg=-Wl,--no-keep-memory"
 
 jobs:
   test:
@@ -24,11 +26,11 @@ jobs:
       with:
         # Separate cache key to avoid corruption issues
         key: test-${{ runner.os }}
-    # Limit parallel jobs to reduce memory pressure during linking
+    # Use -j 1 to serialize test compilation and linking
     # GitHub Actions runners have limited RAM (7GB), and linking
-    # multiple test binaries in parallel can cause OOM/Bus errors
+    # multiple test binaries in parallel causes OOM/Bus errors
     - name: Run tests
-      run: cargo test --all-features -j 2
+      run: cargo test --all-features -j 1
 
   clippy:
     runs-on: ubuntu-latest
