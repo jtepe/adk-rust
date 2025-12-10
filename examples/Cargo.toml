@@ -173,6 +173,21 @@ path = "deepseek_reasoner/main.rs"
 required-features = ["deepseek"]
 
 [[example]]
+name = "deepseek_tools"
+path = "deepseek_tools/main.rs"
+required-features = ["deepseek"]
+
+[[example]]
+name = "deepseek_thinking_tools"
+path = "deepseek_thinking_tools/main.rs"
+required-features = ["deepseek"]
+
+[[example]]
+name = "deepseek_caching"
+path = "deepseek_caching/main.rs"
+required-features = ["deepseek"]
+
+[[example]]
 name = "realtime_basic"
 path = "realtime_basic/main.rs"
 required-features = ["realtime-openai"]

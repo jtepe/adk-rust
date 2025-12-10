@@ -183,7 +183,7 @@ pub fn content_to_message(content: &Content) -> Message {
         "model" | "assistant" => "assistant",
         "user" => "user",
         "system" => "system",
-        "tool" => "tool",
+        "tool" | "function" => "tool", // DeepSeek uses "tool" for function responses
         other => other,
     };
 
