@@ -1,6 +1,6 @@
 # Guardrails Framework
 
-*Priority: 🔴 P0 | Target: Q1 2025 | Effort: 4 weeks*
+*Priority: 🔴 P0 | Target: Q1 2026 | Effort: 4 weeks*
 
 ## Overview
 

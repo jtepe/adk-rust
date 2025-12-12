@@ -1,6 +1,6 @@
 # Cloud Integrations
 
-*Priority: 🟡 P1 | Target: Q2-Q3 2025 | Effort: 12 weeks total*
+*Priority: 🟡 P1 | Target: Q2-Q3 2026 | Effort: 12 weeks total*
 
 ## Overview
 
@@ -10,7 +10,7 @@ Integrate ADK-Rust with major cloud providers for production deployment, matchin
 
 ## 1. Google Cloud Platform (adk-gcp)
 
-*Target: Q2 2025 | Effort: 4 weeks*
+*Target: Q2 2026 | Effort: 4 weeks*
 
 ### Features
 
@@ -57,7 +57,7 @@ let model = VertexAIModel::new(
 
 ## 2. Microsoft Azure (adk-azure)
 
-*Target: Q2-Q3 2025 | Effort: 4 weeks*
+*Target: Q2-Q3 2026 | Effort: 4 weeks*
 
 ### Features
 
@@ -104,7 +104,7 @@ let model = AzureOpenAIModel::new(
 
 ## 3. Amazon Web Services (adk-aws)
 
-*Target: Q3 2025 | Effort: 4 weeks*
+*Target: Q3 2026 | Effort: 4 weeks*
 
 ### Features
 

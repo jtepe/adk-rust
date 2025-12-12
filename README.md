@@ -642,9 +642,9 @@ Contributions welcome! Please open an issue or pull request on GitHub.
 
 | Priority | Feature | Target | Status |
 |----------|---------|--------|--------|
-| 🔴 P0 | [Guardrails](docs/roadmap/guardrails.md) | Q1 2025 | Planned |
-| 🔴 P0 | [ADK Studio](docs/roadmap/adk-studio.md) | Q1-Q2 2025 | Planned |
-| 🟡 P1 | [Cloud Integrations](docs/roadmap/cloud-integrations.md) | Q2-Q3 2025 | Planned |
-| 🟡 P1 | [Graph Visualization](docs/roadmap/graph-agent-design.md) | Q2 2025 | Planned |
-| 🟢 P2 | [Enterprise Features](docs/roadmap/enterprise.md) | Q4 2025 | Planned |
-| 🟢 P2 | [VertexAI Sessions](docs/roadmap/vertex-ai-session.md) | Q2 2025 | Planned |
+| 🔴 P0 | [Guardrails](docs/roadmap/guardrails.md) | Q1 2026 | Planned |
+| 🔴 P0 | [ADK Studio](docs/roadmap/adk-studio.md) | Q1-Q2 2026 | Planned |
+| 🟡 P1 | [Cloud Integrations](docs/roadmap/cloud-integrations.md) | Q2-Q3 2026 | Planned |
+| 🟡 P1 | [Graph Visualization](docs/roadmap/graph-agent-design.md) | Q2 2026 | Planned |
+| 🟢 P2 | [Enterprise Features](docs/roadmap/enterprise.md) | Q4 2026 | Planned |
+| 🟢 P2 | [VertexAI Sessions](docs/roadmap/vertex-ai-session.md) | Q2 2026 | Planned |

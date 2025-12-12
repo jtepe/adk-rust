@@ -1,6 +1,6 @@
 # Enterprise Features
 
-*Priority: 🟢 P2 | Target: Q4 2025 | Effort: 12 weeks total*
+*Priority: 🟢 P2 | Target: Q4 2026 | Effort: 12 weeks total*
 
 ## Overview
 

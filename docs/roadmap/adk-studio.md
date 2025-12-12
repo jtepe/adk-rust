@@ -1,6 +1,6 @@
 # ADK Studio
 
-*Priority: 🔴 P0 | Target: Q1-Q2 2025 | Effort: 8 weeks*
+*Priority: 🔴 P0 | Target: Q1-Q2 2026 | Effort: 8 weeks*
 
 ## Overview
 
