@@ -28,7 +28,8 @@ full = [
     "server",
     "telemetry",
     "cli",
-    "graph"
+    "graph",
+    "ui"
 ]
 
 # CLI launcher support
@@ -45,6 +46,7 @@ runner = ["dep:adk-runner"]
 server = ["dep:adk-server"]
 telemetry = ["dep:adk-telemetry"]
 graph = ["dep:adk-graph"]
+ui = ["dep:adk-ui"]
 
 # Minimal preset (just agents + models + runner)
 minimal = ["agents", "models", "runner"]
@@ -65,6 +67,7 @@ adk-server = { path = "../adk-server", version = "0.1.5", optional = true }
 adk-telemetry = { path = "../adk-telemetry", version = "0.1.5", optional = true }
 adk-cli = { path = "../adk-cli", version = "0.1.5", optional = true }
 adk-graph = { path = "../adk-graph", version = "0.1.5", optional = true }
+adk-ui = { path = "../adk-ui", version = "0.1.5", optional = true }
 
 # Re-export common dependencies
 tokio = { workspace = true }

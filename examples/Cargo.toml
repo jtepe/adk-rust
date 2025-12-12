@@ -333,6 +333,14 @@ name = "browser_interactive"
 path = "browser_interactive/main.rs"
 required-features = ["browser"]
 
+[[example]]
+name = "ui_agent"
+path = "ui_agent/main.rs"
+
+[[example]]
+name = "ui_server"
+path = "ui_server/main.rs"
+
 [features]
 default = []
 openai = ["adk-model/openai"]
@@ -356,6 +364,7 @@ adk-memory = { path = "../adk-memory" }
 adk-realtime = { path = "../adk-realtime" }
 adk-graph = { path = "../adk-graph" }
 adk-eval = { path = "../adk-eval" }
+adk-ui = { path = "../adk-ui" }
 adk-browser = { path = "../adk-browser", optional = true }
 tokio = { version = "1.40", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"], optional = true }

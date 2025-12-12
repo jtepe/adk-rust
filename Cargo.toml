@@ -3,20 +3,21 @@ resolver = "2"
 members = [
     # Core packages (publishable to crates.io)
     "adk-core",
-    "adk-telemetry",
+    "adk-agent",
     "adk-model",
+    "adk-tool",
+    "adk-runner",
+    "adk-server",
     "adk-session",
     "adk-artifact",
     "adk-memory",
-    "adk-tool",
-    "adk-agent",
-    "adk-runner",
-    "adk-server",
     "adk-cli",
     "adk-realtime",
     "adk-graph",
-    "adk-eval",
     "adk-browser",
+    "adk-eval",
+    "adk-ui",
+    "adk-telemetry",
     "adk-rust",
 
     # Development packages (not published)

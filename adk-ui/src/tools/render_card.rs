@@ -1,0 +1,117 @@
+use crate::schema::*;
+use adk_core::{Result, Tool, ToolContext};
+use async_trait::async_trait;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::sync::Arc;
+
+/// Parameters for the render_card tool
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct RenderCardParams {
+    /// Title of the card
+    pub title: String,
+    /// Optional description/subtitle
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Main content text (supports markdown-like formatting)
+    pub content: String,
+    /// Optional action buttons
+    #[serde(default)]
+    pub actions: Vec<CardAction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CardAction {
+    /// Button label
+    pub label: String,
+    /// Action ID triggered when clicked
+    pub action_id: String,
+    /// Button variant: primary, secondary, danger, ghost
+    #[serde(default = "default_variant")]
+    pub variant: String,
+}
+
+fn default_variant() -> String {
+    "primary".to_string()
+}
+
+/// Tool for rendering information cards
+pub struct RenderCardTool;
+
+impl RenderCardTool {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for RenderCardTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl Tool for RenderCardTool {
+    fn name(&self) -> &str {
+        "render_card"
+    }
+
+    fn description(&self) -> &str {
+        "Render an information card to display content to the user. Use this for showing status updates, summaries, or any structured information with optional action buttons."
+    }
+
+    fn parameters_schema(&self) -> Option<Value> {
+        Some(super::generate_gemini_schema::<RenderCardParams>())
+    }
+
+    async fn execute(&self, _ctx: Arc<dyn ToolContext>, args: Value) -> Result<Value> {
+        let params: RenderCardParams = serde_json::from_value(args)
+            .map_err(|e| adk_core::AdkError::Tool(format!("Invalid parameters: {}", e)))?;
+
+        // Build card content
+        let content = vec![Component::Text(Text {
+            id: None,
+            content: params.content,
+            variant: TextVariant::Body,
+        })];
+
+        // Build footer with action buttons
+        let footer = if params.actions.is_empty() {
+            None
+        } else {
+            Some(
+                params
+                    .actions
+                    .into_iter()
+                    .map(|action| {
+                        let variant = match action.variant.as_str() {
+                            "secondary" => ButtonVariant::Secondary,
+                            "danger" => ButtonVariant::Danger,
+                            "ghost" => ButtonVariant::Ghost,
+                            "outline" => ButtonVariant::Outline,
+                            _ => ButtonVariant::Primary,
+                        };
+                        Component::Button(Button {
+                            id: None,
+                            label: action.label,
+                            action_id: action.action_id,
+                            variant,
+                            disabled: false,
+                        })
+                    })
+                    .collect(),
+            )
+        };
+
+        let ui = UiResponse::new(vec![Component::Card(Card {
+            id: None,
+            title: Some(params.title),
+            description: params.description,
+            content,
+            footer,
+        })]);
+
+        Ok(serde_json::to_value(ui).unwrap())
+    }
+}
