@@ -91,7 +91,11 @@ impl ContentFilter {
     pub fn max_length(max: usize) -> Self {
         Self::new(
             "max_length",
-            ContentFilterConfig { max_length: Some(max), severity: Severity::Medium, ..Default::default() },
+            ContentFilterConfig {
+                max_length: Some(max),
+                severity: Severity::Medium,
+                ..Default::default()
+            },
         )
     }
 
@@ -99,7 +103,11 @@ impl ContentFilter {
     pub fn blocked_keywords(keywords: Vec<String>) -> Self {
         Self::new(
             "blocked_keywords",
-            ContentFilterConfig { blocked_keywords: keywords, severity: Severity::High, ..Default::default() },
+            ContentFilterConfig {
+                blocked_keywords: keywords,
+                severity: Severity::High,
+                ..Default::default()
+            },
         )
     }
 

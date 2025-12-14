@@ -43,20 +43,13 @@ pub struct PiiRedactor {
 impl PiiRedactor {
     /// Create a new PII redactor with all PII types enabled
     pub fn new() -> Self {
-        Self::with_types(&[
-            PiiType::Email,
-            PiiType::Phone,
-            PiiType::Ssn,
-            PiiType::CreditCard,
-        ])
+        Self::with_types(&[PiiType::Email, PiiType::Phone, PiiType::Ssn, PiiType::CreditCard])
     }
 
     /// Create a PII redactor with specific types
     pub fn with_types(types: &[PiiType]) -> Self {
-        let patterns = types
-            .iter()
-            .filter_map(|t| Regex::new(t.pattern()).ok().map(|r| (*t, r)))
-            .collect();
+        let patterns =
+            types.iter().filter_map(|t| Regex::new(t.pattern()).ok().map(|r| (*t, r))).collect();
 
         Self { patterns }
     }

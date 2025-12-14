@@ -16,8 +16,8 @@
 //! use adk_guardrail::{GuardrailSet, ContentFilter, PiiRedactor};
 //!
 //! let input_guardrails = GuardrailSet::new()
-//!     .add(ContentFilter::harmful_content())
-//!     .add(PiiRedactor::new());
+//!     .with(ContentFilter::harmful_content())
+//!     .with(PiiRedactor::new());
 //!
 //! let agent = LlmAgentBuilder::new("assistant")
 //!     .input_guardrails(input_guardrails)

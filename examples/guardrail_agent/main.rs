@@ -33,12 +33,11 @@ async fn main() -> anyhow::Result<()> {
     let model = Arc::new(GeminiModel::new(&api_key, "gemini-2.0-flash")?);
 
     // Input guardrails: block harmful content, redact PII
-    let input_guardrails = GuardrailSet::new()
-        .add(ContentFilter::harmful_content())
-        .add(PiiRedactor::new());
+    let input_guardrails =
+        GuardrailSet::new().with(ContentFilter::harmful_content()).with(PiiRedactor::new());
 
     // Output guardrails: limit response length
-    let output_guardrails = GuardrailSet::new().add(ContentFilter::max_length(2000));
+    let output_guardrails = GuardrailSet::new().with(ContentFilter::max_length(2000));
 
     let agent = LlmAgentBuilder::new("guarded_assistant")
         .description("Assistant with safety guardrails")

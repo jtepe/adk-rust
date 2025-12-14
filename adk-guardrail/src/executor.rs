@@ -13,12 +13,12 @@ impl GuardrailSet {
         Self { guardrails: Vec::new() }
     }
 
-    pub fn add(mut self, guardrail: impl Guardrail + 'static) -> Self {
+    pub fn with(mut self, guardrail: impl Guardrail + 'static) -> Self {
         self.guardrails.push(Arc::new(guardrail));
         self
     }
 
-    pub fn add_arc(mut self, guardrail: Arc<dyn Guardrail>) -> Self {
+    pub fn with_arc(mut self, guardrail: Arc<dyn Guardrail>) -> Self {
         self.guardrails.push(guardrail);
         self
     }
@@ -53,7 +53,11 @@ impl GuardrailExecutor {
     /// Run all guardrails in parallel, with early exit on critical failures
     pub async fn run(guardrails: &GuardrailSet, content: &Content) -> Result<ExecutionResult> {
         if guardrails.is_empty() {
-            return Ok(ExecutionResult { passed: true, transformed_content: None, failures: vec![] });
+            return Ok(ExecutionResult {
+                passed: true,
+                transformed_content: None,
+                failures: vec![],
+            });
         }
 
         // Separate parallel and sequential guardrails
@@ -65,8 +69,10 @@ impl GuardrailExecutor {
 
         // Run parallel guardrails
         if !parallel.is_empty() {
-            let futures: Vec<_> =
-                parallel.iter().map(|g| Self::run_single(Arc::clone(g), &current_content)).collect();
+            let futures: Vec<_> = parallel
+                .iter()
+                .map(|g| Self::run_single(Arc::clone(g), &current_content))
+                .collect();
 
             let results = join_all(futures).await;
 
@@ -122,12 +128,12 @@ impl GuardrailExecutor {
             }
         }
 
-        let passed = all_failures.is_empty()
-            || all_failures.iter().all(|(_, _, s)| *s == Severity::Low);
+        let passed =
+            all_failures.is_empty() || all_failures.iter().all(|(_, _, s)| *s == Severity::Low);
 
         // Check if content was transformed by comparing serialized forms
-        let was_transformed = serde_json::to_string(&current_content).ok()
-            != serde_json::to_string(content).ok();
+        let was_transformed =
+            serde_json::to_string(&current_content).ok() != serde_json::to_string(content).ok();
         let transformed = if was_transformed { Some(current_content) } else { None };
 
         Ok(ExecutionResult { passed, transformed_content: transformed, failures: all_failures })
@@ -178,7 +184,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_pass_guardrail() {
-        let set = GuardrailSet::new().add(PassGuardrail);
+        let set = GuardrailSet::new().with(PassGuardrail);
         let content = Content::new("user").with_text("hello");
         let result = GuardrailExecutor::run(&set, &content).await.unwrap();
         assert!(result.passed);
@@ -186,7 +192,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fail_guardrail_low_severity() {
-        let set = GuardrailSet::new().add(FailGuardrail { severity: Severity::Low });
+        let set = GuardrailSet::new().with(FailGuardrail { severity: Severity::Low });
         let content = Content::new("user").with_text("hello");
         let result = GuardrailExecutor::run(&set, &content).await.unwrap();
         assert!(result.passed); // Low severity doesn't fail
@@ -195,7 +201,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fail_guardrail_high_severity() {
-        let set = GuardrailSet::new().add(FailGuardrail { severity: Severity::High });
+        let set = GuardrailSet::new().with(FailGuardrail { severity: Severity::High });
         let content = Content::new("user").with_text("hello");
         let result = GuardrailExecutor::run(&set, &content).await.unwrap();
         assert!(!result.passed);
@@ -203,7 +209,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_critical_early_exit() {
-        let set = GuardrailSet::new().add(FailGuardrail { severity: Severity::Critical });
+        let set = GuardrailSet::new().with(FailGuardrail { severity: Severity::Critical });
         let content = Content::new("user").with_text("hello");
         let result = GuardrailExecutor::run(&set, &content).await;
         assert!(result.is_err());

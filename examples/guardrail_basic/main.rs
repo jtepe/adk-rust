@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     println!("\n--- Combined Guardrails ---\n");
 
     let guardrails =
-        GuardrailSet::new().add(ContentFilter::max_length(50)).add(PiiRedactor::new());
+        GuardrailSet::new().with(ContentFilter::max_length(50)).with(PiiRedactor::new());
 
     let content = adk_core::Content::new("user").with_text("Contact: test@example.com");
     let result = GuardrailExecutor::run(&guardrails, &content).await?;

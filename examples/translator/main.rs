@@ -74,14 +74,8 @@ async fn main() -> anyhow::Result<()> {
     // Parse arguments manually (examples don't have clap in deps)
     let args: Vec<String> = std::env::args().collect();
     let input_file = args.iter().position(|a| a == "--input").map(|i| &args[i + 1]);
-    let languages_arg = args
-        .iter()
-        .position(|a| a == "--languages")
-        .map(|i| &args[i + 1]);
-    let output_dir = args
-        .iter()
-        .position(|a| a == "--output")
-        .map(|i| PathBuf::from(&args[i + 1]));
+    let languages_arg = args.iter().position(|a| a == "--languages").map(|i| &args[i + 1]);
+    let output_dir = args.iter().position(|a| a == "--output").map(|i| PathBuf::from(&args[i + 1]));
 
     // Use environment variable for API key
     let api_key = std::env::var("GOOGLE_API_KEY")
@@ -118,12 +112,7 @@ async fn main() -> anyhow::Result<()> {
         // Build pipeline without language pre-set (user specifies in message)
         let pipeline = build_translation_pipeline(model, None)?;
 
-        run_console(
-            Arc::new(pipeline),
-            "translator_app".to_string(),
-            "user".to_string(),
-        )
-        .await?;
+        run_console(Arc::new(pipeline), "translator_app".to_string(), "user".to_string()).await?;
     }
 
     Ok(())
@@ -257,12 +246,7 @@ async fn run_batch_mode(
     let langs: Vec<(&str, &str)> = if let Some(lang_str) = languages {
         lang_str
             .split(',')
-            .filter_map(|code| {
-                TARGET_LANGUAGES
-                    .iter()
-                    .find(|(c, _)| *c == code.trim())
-                    .copied()
-            })
+            .filter_map(|code| TARGET_LANGUAGES.iter().find(|(c, _)| *c == code.trim()).copied())
             .collect()
     } else {
         TARGET_LANGUAGES.to_vec()
@@ -295,10 +279,8 @@ async fn run_batch_mode(
 
         // Create session with initial state
         let mut initial_state = HashMap::new();
-        initial_state.insert(
-            "target_language".to_string(),
-            serde_json::Value::String(name.to_string()),
-        );
+        initial_state
+            .insert("target_language".to_string(), serde_json::Value::String(name.to_string()));
 
         let session = session_service
             .create(CreateRequest {
@@ -312,15 +294,12 @@ async fn run_batch_mode(
         // Build prompt
         let prompt = format!("Translate the following content to {}:\n\n{}", name, content);
 
-        let user_content = Content {
-            role: "user".to_string(),
-            parts: vec![Part::Text { text: prompt }],
-        };
+        let user_content =
+            Content { role: "user".to_string(), parts: vec![Part::Text { text: prompt }] };
 
         // Run pipeline
         let session_id = session.id().to_string();
-        let result =
-            run_translation(&runner, &session_service, &session_id, user_content).await;
+        let result = run_translation(&runner, &session_service, &session_id, user_content).await;
 
         match result {
             Ok(translation) => {
@@ -349,13 +328,8 @@ async fn run_translation(
     session_id: &str,
     user_content: Content,
 ) -> anyhow::Result<String> {
-    let mut stream = runner
-        .run(
-            "batch_user".to_string(),
-            session_id.to_string(),
-            user_content,
-        )
-        .await?;
+    let mut stream =
+        runner.run("batch_user".to_string(), session_id.to_string(), user_content).await?;
 
     // Process stream and collect any errors
     let mut last_text = String::new();
