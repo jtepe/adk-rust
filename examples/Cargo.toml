@@ -8,6 +8,10 @@ name = "quickstart"
 path = "quickstart/main.rs"
 
 [[example]]
+name = "translator"
+path = "translator/main.rs"
+
+[[example]]
 name = "server"
 path = "server/main.rs"
 
@@ -345,6 +349,21 @@ path = "ui_server/main.rs"
 name = "streaming_demo"
 path = "streaming_demo/main.rs"
 
+[[example]]
+name = "guardrail_basic"
+path = "guardrail_basic/main.rs"
+required-features = ["guardrails"]
+
+[[example]]
+name = "guardrail_schema"
+path = "guardrail_schema/main.rs"
+required-features = ["guardrails"]
+
+[[example]]
+name = "guardrail_agent"
+path = "guardrail_agent/main.rs"
+required-features = ["guardrails"]
+
 [features]
 default = []
 openai = ["adk-model/openai"]
@@ -353,6 +372,7 @@ deepseek = ["adk-model/deepseek"]
 realtime-openai = ["adk-realtime/openai"]
 realtime-gemini = ["adk-realtime/gemini"]
 browser = ["dep:adk-browser", "dep:reqwest"]
+guardrails = ["adk-agent/guardrails", "dep:adk-guardrail"]
 
 [dependencies]
 adk-core = { path = "../adk-core" }
@@ -370,6 +390,7 @@ adk-graph = { path = "../adk-graph" }
 adk-eval = { path = "../adk-eval" }
 adk-ui = { path = "../adk-ui" }
 adk-browser = { path = "../adk-browser", optional = true }
+adk-guardrail = { path = "../adk-guardrail", optional = true }
 tokio = { version = "1.40", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"], optional = true }
 base64 = "0.22"

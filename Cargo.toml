@@ -18,6 +18,7 @@ members = [
     "adk-eval",
     "adk-ui",
     "adk-telemetry",
+    "adk-guardrail",
     "adk-rust",
 
     # Development packages (not published)
@@ -40,7 +41,7 @@ opt-level = 3
 lto = true
 
 [workspace.package]
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 rust-version = "1.75"
 license = "Apache-2.0"

@@ -40,14 +40,32 @@
 //! // Loop: repeat until exit
 //! let loop_agent = LoopAgent::new("iterator", worker, 10);
 //! ```
+//!
+//! ## Guardrails (optional)
+//!
+//! Enable the `guardrails` feature for input/output validation:
+//!
+//! ```rust,ignore
+//! use adk_agent::{LlmAgentBuilder, guardrails::{GuardrailSet, ContentFilter, PiiRedactor}};
+//!
+//! let input_guardrails = GuardrailSet::new()
+//!     .add(ContentFilter::harmful_content())
+//!     .add(PiiRedactor::new());
+//!
+//! let agent = LlmAgentBuilder::new("assistant")
+//!     .input_guardrails(input_guardrails)
+//!     .build()?;
+//! ```
 
 mod custom_agent;
+pub mod guardrails;
 mod llm_agent;
 pub mod tool_call_markup;
 mod workflow;
 
 pub use adk_core::Agent;
 pub use custom_agent::{CustomAgent, CustomAgentBuilder};
+pub use guardrails::GuardrailSet;
 pub use llm_agent::{LlmAgent, LlmAgentBuilder};
 pub use tool_call_markup::{normalize_content, normalize_option_content};
 pub use workflow::{ConditionalAgent, LoopAgent, ParallelAgent, SequentialAgent};

@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2025-12-14
+
+### Added
+- **adk-guardrail**: New crate for agent safety and validation
+  - `Guardrail` trait with async `validate()` returning `Pass`, `Fail`, or `Transform`
+  - `GuardrailSet` and `GuardrailExecutor` for parallel execution with early exit
+  - `Severity` levels: `Low`, `Medium`, `High`, `Critical`
+  - Built-in guardrails:
+    - `PiiRedactor` - Detects and redacts Email, Phone, SSN, CreditCard, IpAddress
+    - `ContentFilter` - Blocks harmful content, off-topic responses, keywords, max length
+    - `SchemaValidator` - JSON schema validation with markdown code block extraction
+- **adk-agent**: Guardrails integration (feature-gated)
+  - `LlmAgentBuilder::input_guardrails()` - Validate/transform user input
+  - `LlmAgentBuilder::output_guardrails()` - Validate/transform model output
+  - Enable with `adk-agent = { features = ["guardrails"] }`
+- 3 new guardrail examples:
+  - `guardrail_basic` - PII redaction and content filtering
+  - `guardrail_schema` - JSON schema validation
+  - `guardrail_agent` - Full agent integration
+- **translator example**: Refactored with adk-rust best practices
+
+### Changed
+- Roadmap documents added for guardrails, cloud integrations, enterprise, adk-studio
+- Updated adk-ui roadmap to implemented status
+
 ## [0.1.6] - 2025-12-12
 
 ### Added

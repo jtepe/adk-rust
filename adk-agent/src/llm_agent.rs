@@ -8,6 +8,8 @@ use async_stream::stream;
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
+use crate::guardrails::GuardrailSet;
+
 pub struct LlmAgent {
     name: String,
     description: String,
@@ -33,6 +35,10 @@ pub struct LlmAgent {
     after_model_callbacks: Arc<Vec<AfterModelCallback>>,
     before_tool_callbacks: Arc<Vec<BeforeToolCallback>>,
     after_tool_callbacks: Arc<Vec<AfterToolCallback>>,
+    #[allow(dead_code)] // Used when guardrails feature is enabled
+    input_guardrails: GuardrailSet,
+    #[allow(dead_code)] // Used when guardrails feature is enabled
+    output_guardrails: GuardrailSet,
 }
 
 impl std::fmt::Debug for LlmAgent {
@@ -70,6 +76,8 @@ pub struct LlmAgentBuilder {
     after_model_callbacks: Vec<AfterModelCallback>,
     before_tool_callbacks: Vec<BeforeToolCallback>,
     after_tool_callbacks: Vec<AfterToolCallback>,
+    input_guardrails: GuardrailSet,
+    output_guardrails: GuardrailSet,
 }
 
 impl LlmAgentBuilder {
@@ -96,6 +104,8 @@ impl LlmAgentBuilder {
             after_model_callbacks: Vec::new(),
             before_tool_callbacks: Vec::new(),
             after_tool_callbacks: Vec::new(),
+            input_guardrails: GuardrailSet::default(),
+            output_guardrails: GuardrailSet::default(),
         }
     }
 
@@ -199,6 +209,32 @@ impl LlmAgentBuilder {
         self
     }
 
+    /// Set input guardrails to validate user input before processing.
+    ///
+    /// Input guardrails run before the agent processes the request and can:
+    /// - Block harmful or off-topic content
+    /// - Redact PII from user input
+    /// - Enforce input length limits
+    ///
+    /// Requires the `guardrails` feature.
+    pub fn input_guardrails(mut self, guardrails: GuardrailSet) -> Self {
+        self.input_guardrails = guardrails;
+        self
+    }
+
+    /// Set output guardrails to validate agent responses.
+    ///
+    /// Output guardrails run after the agent generates a response and can:
+    /// - Enforce JSON schema compliance
+    /// - Redact PII from responses
+    /// - Block harmful content in responses
+    ///
+    /// Requires the `guardrails` feature.
+    pub fn output_guardrails(mut self, guardrails: GuardrailSet) -> Self {
+        self.output_guardrails = guardrails;
+        self
+    }
+
     pub fn build(self) -> Result<LlmAgent> {
         let model =
             self.model.ok_or_else(|| adk_core::AdkError::Agent("Model is required".to_string()))?;
@@ -225,6 +261,8 @@ impl LlmAgentBuilder {
             after_model_callbacks: Arc::new(self.after_model_callbacks),
             before_tool_callbacks: Arc::new(self.before_tool_callbacks),
             after_tool_callbacks: Arc::new(self.after_tool_callbacks),
+            input_guardrails: self.input_guardrails,
+            output_guardrails: self.output_guardrails,
         })
     }
 }
