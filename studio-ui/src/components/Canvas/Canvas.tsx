@@ -39,6 +39,8 @@ export function Canvas() {
   const [flowPhase, setFlowPhase] = useState<FlowPhase>('idle');
   const [selectedSubAgent, setSelectedSubAgent] = useState<{parent: string, sub: string} | null>(null);
   const [compiledCode, setCompiledCode] = useState<GeneratedProject | null>(null);
+  const [buildOutput, setBuildOutput] = useState<{success: boolean, output: string, path: string | null} | null>(null);
+  const [building, setBuilding] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -50,6 +52,20 @@ export function Canvas() {
       setCompiledCode(result);
     } catch (e) {
       alert('Compile failed: ' + (e as Error).message);
+    }
+  }, [currentProject]);
+
+  const handleBuild = useCallback(async () => {
+    if (!currentProject) return;
+    setBuilding(true);
+    setBuildOutput(null);
+    try {
+      const result = await api.projects.build(currentProject.id);
+      setBuildOutput({ success: result.success, output: result.output, path: result.binary_path });
+    } catch (e) {
+      setBuildOutput({ success: false, output: (e as Error).message, path: null });
+    } finally {
+      setBuilding(false);
     }
   }, [currentProject]);
 
@@ -325,7 +341,10 @@ export function Canvas() {
           </div>
           <div className="space-y-2">
             <button onClick={handleCompile} className="w-full px-3 py-2 bg-blue-700 hover:bg-blue-600 rounded text-sm">
-              ⚙ Compile
+              📄 View Code
+            </button>
+            <button onClick={handleBuild} disabled={building} className="w-full px-3 py-2 bg-green-700 hover:bg-green-600 disabled:bg-gray-600 rounded text-sm">
+              {building ? '⏳ Building...' : '🔨 Build'}
             </button>
             <button onClick={() => setShowConsole(!showConsole)} className="w-full px-3 py-2 bg-gray-700 rounded text-sm">
               {showConsole ? 'Hide Console' : 'Show Console'}
@@ -666,6 +685,29 @@ export function Canvas() {
                   <pre className="bg-gray-900 p-4 rounded text-xs overflow-x-auto whitespace-pre">{file.content}</pre>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Build Output Modal */}
+      {buildOutput && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setBuildOutput(null)}>
+          <div className="bg-studio-panel rounded-lg w-3/5 max-h-4/5 flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <h2 className={`text-lg font-semibold ${buildOutput.success ? 'text-green-400' : 'text-red-400'}`}>
+                {buildOutput.success ? '✓ Build Successful' : '✗ Build Failed'}
+              </h2>
+              <button onClick={() => setBuildOutput(null)} className="text-gray-400 hover:text-white text-xl">×</button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              {buildOutput.path && (
+                <div className="mb-4 p-3 bg-green-900/30 rounded">
+                  <div className="text-sm text-gray-400">Binary path:</div>
+                  <code className="text-green-400 text-sm">{buildOutput.path}</code>
+                </div>
+              )}
+              <pre className="bg-gray-900 p-4 rounded text-xs overflow-auto whitespace-pre max-h-96">{buildOutput.output}</pre>
             </div>
           </div>
         </div>

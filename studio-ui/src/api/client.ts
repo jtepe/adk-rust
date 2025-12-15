@@ -24,6 +24,12 @@ export interface GeneratedProject {
   files: GeneratedFile[];
 }
 
+export interface BuildResponse {
+  success: boolean;
+  output: string;
+  binary_path: string | null;
+}
+
 export const api = {
   projects: {
     list: () => request<ProjectMeta[]>('/projects'),
@@ -42,5 +48,7 @@ export const api = {
       request<void>(`/projects/${id}`, { method: 'DELETE' }),
     compile: (id: string) =>
       request<GeneratedProject>(`/projects/${id}/compile`),
+    build: (id: string) =>
+      request<BuildResponse>(`/projects/${id}/build`, { method: 'POST' }),
   },
 };

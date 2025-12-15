@@ -159,3 +159,63 @@ pub async fn compile_project(
     
     Ok(Json(generated))
 }
+
+/// Build response
+#[derive(Serialize)]
+pub struct BuildResponse {
+    pub success: bool,
+    pub output: String,
+    pub binary_path: Option<String>,
+}
+
+/// Compile and build project to executable
+pub async fn build_project(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> ApiResult<BuildResponse> {
+    let storage = state.storage.read().await;
+    let project = storage.get(id).await.map_err(|e| err(StatusCode::NOT_FOUND, e.to_string()))?;
+    
+    let generated = crate::codegen::generate_rust_project(&project)
+        .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    
+    // Write to temp directory
+    let project_name = project.name.to_lowercase().replace(' ', "_");
+    let build_dir = std::env::temp_dir().join("adk-studio-builds").join(&project_name);
+    std::fs::create_dir_all(&build_dir).map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    
+    for file in &generated.files {
+        let path = build_dir.join(&file.path);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).ok();
+        }
+        std::fs::write(&path, &file.content).map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+    
+    // Run cargo build
+    let output = std::process::Command::new("cargo")
+        .arg("build")
+        .arg("--release")
+        .current_dir(&build_dir)
+        .output()
+        .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{}\n{}", stdout, stderr);
+    
+    if output.status.success() {
+        let binary = build_dir.join("target/release").join(&project_name);
+        Ok(Json(BuildResponse {
+            success: true,
+            output: combined,
+            binary_path: Some(binary.to_string_lossy().to_string()),
+        }))
+    } else {
+        Ok(Json(BuildResponse {
+            success: false,
+            output: combined,
+            binary_path: None,
+        }))
+    }
+}
