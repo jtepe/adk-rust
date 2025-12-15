@@ -200,11 +200,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-adk-agent = "0.1"
-adk-core = "0.1"
-adk-model = "0.1"
-adk-tool = "0.1"
-adk-cli = "0.1"
+adk-agent = "0.1.7"
+adk-core = "0.1.7"
+adk-model = "0.1.7"
+adk-tool = "0.1.7"
+adk-cli = "0.1.7"
 tokio = {{ version = "1", features = ["full"] }}
 anyhow = "1"
 serde_json = "1"
