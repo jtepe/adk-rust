@@ -49,7 +49,8 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     code.push_str("use adk_tool::{FunctionTool, GoogleSearchTool, ExitLoopTool, LoadArtifactsTool};\n");
     code.push_str("use anyhow::Result;\n");
     code.push_str("use serde_json::{json, Value};\n");
-    code.push_str("use std::sync::Arc;\n\n");
+    code.push_str("use std::sync::Arc;\n");
+    code.push_str("use tracing_subscriber::{fmt, EnvFilter};\n\n");
     
     // Generate function tools
     for (agent_id, agent) in &project.agents {
@@ -65,6 +66,9 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     
     code.push_str("#[tokio::main]\n");
     code.push_str("async fn main() -> Result<()> {\n");
+    // Initialize tracing with JSON output
+    code.push_str("    // Initialize tracing\n");
+    code.push_str("    fmt().with_env_filter(EnvFilter::from_default_env().add_directive(\"adk=info\".parse()?)).json().with_writer(std::io::stderr).init();\n\n");
     code.push_str("    let api_key = std::env::var(\"GOOGLE_API_KEY\")\n");
     code.push_str("        .or_else(|_| std::env::var(\"GEMINI_API_KEY\"))\n");
     code.push_str("        .expect(\"GOOGLE_API_KEY or GEMINI_API_KEY must be set\");\n\n");
@@ -414,5 +418,6 @@ tokio = {{ version = "1", features = ["full", "macros"] }}
 tokio-stream = "0.1"
 anyhow = "1"
 serde_json = "1"
+tracing-subscriber = {{ version = "0.3", features = ["json", "env-filter"] }}
 "#, name)
 }
