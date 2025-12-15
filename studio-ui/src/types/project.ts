@@ -18,13 +18,19 @@ export interface ProjectSettings {
 }
 
 export interface AgentSchema {
-  type: 'llm' | 'tool' | 'sequential' | 'parallel' | 'loop' | 'graph' | 'custom';
+  type: 'llm' | 'tool' | 'sequential' | 'parallel' | 'loop' | 'router' | 'graph' | 'custom';
   model?: string;
   instruction: string;
   tools: string[];
   sub_agents: string[];
   position: Position;
   max_iterations?: number;
+  routes?: Route[];
+}
+
+export interface Route {
+  condition: string;
+  target: string;
 }
 
 export interface ToolSchema {

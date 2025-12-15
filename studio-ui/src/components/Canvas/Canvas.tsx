@@ -20,6 +20,7 @@ const AGENT_TYPES = [
   { type: 'sequential', label: 'Sequential Agent', enabled: true },
   { type: 'loop', label: 'Loop Agent', enabled: true },
   { type: 'parallel', label: 'Parallel Agent', enabled: true },
+  { type: 'router', label: 'Router Agent', enabled: true },
 ];
 
 const TOOL_TYPES = [
@@ -171,6 +172,28 @@ export function Canvas() {
           },
           style: { background: config.bg, border: `2px solid ${config.border}`, borderRadius: 8, padding: 12, color: '#fff', minWidth: isParallel ? 250 : 150 },
         });
+      } else if (agent.type === 'router') {
+        const routes = agent.routes || [];
+        newNodes.push({
+          id,
+          position: { x: 200, y: 150 + i * 150 },
+          data: { label: (
+            <div className="text-center">
+              <div className="font-semibold">🔀 {id}</div>
+              <div className="text-xs text-gray-400 mb-1">Router Agent</div>
+              {routes.length > 0 && (
+                <div className="border-t border-gray-600 pt-1 mt-1 text-left">
+                  {routes.map((r, idx) => (
+                    <div key={idx} className="text-xs text-gray-300">
+                      {r.condition} → {r.target}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )},
+          style: { background: '#5f4b1e', border: '2px solid #fbbf24', borderRadius: 8, padding: 12, color: '#fff', minWidth: 140 },
+        });
       } else {
         const tools = agent.tools || [];
         newNodes.push({
@@ -222,7 +245,7 @@ export function Canvas() {
   const createAgent = useCallback((agentType: string = 'llm') => {
     if (!currentProject) return;
     const agentCount = Object.keys(currentProject.agents).length;
-    const prefix = { sequential: 'seq', loop: 'loop', parallel: 'par' }[agentType] || 'agent';
+    const prefix = { sequential: 'seq', loop: 'loop', parallel: 'par', router: 'router' }[agentType] || 'agent';
     const id = `${prefix}_${agentCount + 1}`;
     
     if (agentType === 'sequential' || agentType === 'loop' || agentType === 'parallel') {
@@ -252,6 +275,18 @@ export function Canvas() {
         sub_agents: [sub1, sub2],
         position: { x: 200, y: 150 + agentCount * 180 },
         max_iterations: agentType === 'loop' ? 3 : undefined,
+      });
+    } else if (agentType === 'router') {
+      addAgent(id, {
+        type: 'router',
+        model: 'gemini-2.0-flash',
+        instruction: 'Route the request based on intent.',
+        tools: [],
+        sub_agents: [],
+        position: { x: 200, y: 150 + agentCount * 120 },
+        routes: [
+          { condition: 'default', target: 'END' },
+        ],
       });
     } else {
       addAgent(id, {
@@ -458,6 +493,63 @@ export function Canvas() {
                 >
                   + Add Sub-Agent
                 </button>
+              </div>
+            ) : selectedAgent.type === 'router' ? (
+              /* Router Agent Properties */
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Model</label>
+                <input
+                  className="w-full px-2 py-1 bg-studio-bg border border-gray-600 rounded text-sm mb-3"
+                  value={selectedAgent.model || ''}
+                  onChange={(e) => updateAgent(selectedNodeId!, { model: e.target.value })}
+                />
+                <label className="block text-sm text-gray-400 mb-1">Routing Instruction</label>
+                <textarea
+                  className="w-full px-2 py-1 bg-studio-bg border border-gray-600 rounded text-sm h-20 mb-3"
+                  placeholder="Analyze the request and decide which agent to route to..."
+                  value={selectedAgent.instruction}
+                  onChange={(e) => updateAgent(selectedNodeId!, { instruction: e.target.value })}
+                />
+                <label className="block text-sm text-gray-400 mb-2">Routes</label>
+                {(selectedAgent.routes || []).map((route, idx) => (
+                  <div key={idx} className="flex gap-1 mb-2 items-center">
+                    <input
+                      className="flex-1 px-2 py-1 bg-studio-bg border border-gray-600 rounded text-xs"
+                      placeholder="condition"
+                      value={route.condition}
+                      onChange={(e) => {
+                        const routes = [...(selectedAgent.routes || [])];
+                        routes[idx] = { ...route, condition: e.target.value };
+                        updateAgent(selectedNodeId!, { routes });
+                      }}
+                    />
+                    <span className="text-gray-500">→</span>
+                    <input
+                      className="flex-1 px-2 py-1 bg-studio-bg border border-gray-600 rounded text-xs"
+                      placeholder="target"
+                      value={route.target}
+                      onChange={(e) => {
+                        const routes = [...(selectedAgent.routes || [])];
+                        routes[idx] = { ...route, target: e.target.value };
+                        updateAgent(selectedNodeId!, { routes });
+                      }}
+                    />
+                    <button
+                      className="text-red-400 hover:text-red-300 text-sm"
+                      onClick={() => {
+                        const routes = (selectedAgent.routes || []).filter((_, i) => i !== idx);
+                        updateAgent(selectedNodeId!, { routes });
+                      }}
+                    >×</button>
+                  </div>
+                ))}
+                <button
+                  className="w-full py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs"
+                  onClick={() => {
+                    const routes = [...(selectedAgent.routes || []), { condition: '', target: '' }];
+                    updateAgent(selectedNodeId!, { routes });
+                  }}
+                >+ Add Route</button>
               </div>
             ) : (
               /* LLM Agent Properties */

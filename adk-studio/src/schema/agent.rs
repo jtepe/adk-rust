@@ -17,6 +17,16 @@ pub struct AgentSchema {
     pub position: Position,
     #[serde(default)]
     pub max_iterations: Option<u32>,
+    /// For router agents: condition -> target agent mapping
+    #[serde(default)]
+    pub routes: Vec<Route>,
+}
+
+/// A conditional route
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Route {
+    pub condition: String,
+    pub target: String,
 }
 
 impl AgentSchema {
@@ -29,6 +39,7 @@ impl AgentSchema {
             sub_agents: Vec::new(),
             position: Position::default(),
             max_iterations: None,
+            routes: Vec::new(),
         }
     }
 
@@ -57,6 +68,7 @@ pub enum AgentType {
     Sequential,
     Parallel,
     Loop,
+    Router,
     Graph,
     Custom,
 }
