@@ -769,9 +769,19 @@ export function Canvas() {
       </div>
 
       {/* Test Console */}
-      {showConsole && hasAgents && (
+      {showConsole && hasAgents && buildOutput?.path && (
         <div className="h-64">
           <TestConsole onFlowPhase={setFlowPhase} />
+        </div>
+      )}
+      {showConsole && hasAgents && !buildOutput?.path && (
+        <div className="h-32 bg-studio-panel border-t border-gray-700 flex items-center justify-center text-gray-500">
+          <div className="text-center">
+            <div>Build the project first to test it</div>
+            <button onClick={handleBuild} className="mt-2 px-4 py-1 bg-blue-600 hover:bg-blue-700 rounded text-white text-sm">
+              Build Project
+            </button>
+          </div>
         </div>
       )}
       {showConsole && !hasAgents && (
@@ -811,8 +821,8 @@ export function Canvas() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setBuildOutput(null)}>
           <div className="bg-studio-panel rounded-lg w-3/5 max-h-4/5 flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center p-4 border-b border-gray-700">
-              <h2 className={`text-lg font-semibold ${buildOutput.success ? 'text-green-400' : 'text-red-400'}`}>
-                {buildOutput.success ? '✓ Build Successful' : '✗ Build Failed'}
+              <h2 className={`text-lg font-semibold ${building ? 'text-blue-400' : buildOutput.success ? 'text-green-400' : 'text-red-400'}`}>
+                {building ? '⏳ Building...' : buildOutput.success ? '✓ Build Successful' : '✗ Build Failed'}
               </h2>
               <button onClick={() => setBuildOutput(null)} className="text-gray-400 hover:text-white text-xl">×</button>
             </div>
@@ -823,7 +833,10 @@ export function Canvas() {
                   <code className="text-green-400 text-sm">{buildOutput.path}</code>
                 </div>
               )}
-              <pre className="bg-gray-900 p-4 rounded text-xs overflow-auto whitespace-pre max-h-96">{buildOutput.output}</pre>
+              <pre 
+                ref={el => { if (el && building) el.scrollTop = el.scrollHeight; }}
+                className="bg-gray-900 p-4 rounded text-xs overflow-auto whitespace-pre max-h-96"
+              >{buildOutput.output}</pre>
             </div>
           </div>
         </div>

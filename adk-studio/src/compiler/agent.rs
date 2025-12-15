@@ -1,4 +1,4 @@
-use crate::schema::{AgentSchema, AgentType, ProjectSchema, ToolConfig, BrowserToolConfig, ParamType};
+use crate::schema::{AgentSchema, AgentType, ProjectSchema, ToolConfig, BrowserToolConfig};
 use adk_agent::{Agent, LlmAgentBuilder, LoopAgent, ParallelAgent, SequentialAgent};
 use adk_core::{Tool, ToolContext};
 use adk_model::gemini::GeminiModel;
