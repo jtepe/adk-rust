@@ -19,32 +19,58 @@ impl GeminiModel {
     }
 
     fn convert_response(resp: &gemini::GenerationResponse) -> Result<LlmResponse> {
-        let content = resp.candidates.first().and_then(|c| c.content.parts.as_ref()).map(|parts| {
-            let converted_parts: Vec<Part> = parts
-                .iter()
-                .filter_map(|p| match p {
-                    gemini::Part::Text { text, .. } => Some(Part::Text { text: text.clone() }),
-                    gemini::Part::FunctionCall { function_call, .. } => Some(Part::FunctionCall {
-                        name: function_call.name.clone(),
-                        args: function_call.args.clone(),
-                        id: None, // Gemini doesn't use tool call IDs
-                    }),
-                    gemini::Part::FunctionResponse { function_response } => {
-                        Some(Part::FunctionResponse {
-                            name: function_response.name.clone(),
-                            response: function_response
-                                .response
-                                .clone()
-                                .unwrap_or(serde_json::Value::Null),
-                            id: None, // Gemini doesn't use tool call IDs
-                        })
+        let mut converted_parts: Vec<Part> = Vec::new();
+        
+        // Convert content parts
+        if let Some(parts) = resp.candidates.first().and_then(|c| c.content.parts.as_ref()) {
+            for p in parts {
+                match p {
+                    gemini::Part::Text { text, .. } => {
+                        converted_parts.push(Part::Text { text: text.clone() });
                     }
-                    _ => None,
-                })
-                .collect();
+                    gemini::Part::FunctionCall { function_call, .. } => {
+                        converted_parts.push(Part::FunctionCall {
+                            name: function_call.name.clone(),
+                            args: function_call.args.clone(),
+                            id: None,
+                        });
+                    }
+                    gemini::Part::FunctionResponse { function_response } => {
+                        converted_parts.push(Part::FunctionResponse {
+                            name: function_response.name.clone(),
+                            response: function_response.response.clone().unwrap_or(serde_json::Value::Null),
+                            id: None,
+                        });
+                    }
+                    _ => {}
+                }
+            }
+        }
+        
+        // Add grounding metadata as text if present
+        if let Some(grounding) = resp.candidates.first().and_then(|c| c.grounding_metadata.as_ref()) {
+            if let Some(queries) = &grounding.web_search_queries {
+                if !queries.is_empty() {
+                    let search_info = format!("\n\n🔍 **Searched:** {}", queries.join(", "));
+                    converted_parts.push(Part::Text { text: search_info });
+                }
+            }
+            if let Some(chunks) = &grounding.grounding_chunks {
+                let sources: Vec<String> = chunks.iter().filter_map(|c| {
+                    c.web.as_ref().map(|w| format!("[{}]({})", w.title, w.uri))
+                }).collect();
+                if !sources.is_empty() {
+                    let sources_info = format!("\n📚 **Sources:** {}", sources.join(" | "));
+                    converted_parts.push(Part::Text { text: sources_info });
+                }
+            }
+        }
 
-            Content { role: "model".to_string(), parts: converted_parts }
-        });
+        let content = if converted_parts.is_empty() {
+            None
+        } else {
+            Some(Content { role: "model".to_string(), parts: converted_parts })
+        };
 
         let usage_metadata = resp.usage_metadata.as_ref().map(|u| UsageMetadata {
             prompt_token_count: u.prompt_token_count.unwrap_or(0),
