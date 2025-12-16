@@ -17,4 +17,5 @@ pub fn api_routes() -> Router<AppState> {
         .route("/projects/:id/compile", get(handlers::compile_project))
         .route("/projects/:id/build", post(handlers::build_project))
         .route("/projects/:id/build-stream", get(handlers::build_project_stream))
+        .route("/sessions/:session_id", delete(sse::kill_session))
 }

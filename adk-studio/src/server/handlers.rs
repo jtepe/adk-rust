@@ -124,16 +124,9 @@ pub async fn run_project(
 
 /// Clear session for a project
 pub async fn clear_session(Path(id): Path<Uuid>) -> Result<StatusCode, (StatusCode, Json<ApiError>)> {
-    use adk_session::{DeleteRequest, SessionService};
-    use crate::server::sse::session_service;
-    
-    let svc = session_service().clone();
-    let _ = svc.delete(DeleteRequest {
-        app_name: "studio".into(),
-        user_id: "user".into(),
-        session_id: id.to_string(),
-    }).await;
-    
+    // Session is now managed by sse module's persistent process
+    // This endpoint is kept for compatibility but does nothing
+    let _ = id;
     Ok(StatusCode::NO_CONTENT)
 }
 

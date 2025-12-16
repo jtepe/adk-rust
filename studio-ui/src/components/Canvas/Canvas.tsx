@@ -262,8 +262,16 @@ export function Canvas() {
               {tools.length > 0 && (
                 <div className="border-t border-gray-600 pt-1 mt-1">
                   {tools.map(t => {
-                    const tool = TOOL_TYPES.find(tt => tt.type === t);
+                    // Handle function_1, function_2, etc.
+                    const baseType = t.startsWith('function') ? 'function' : t;
+                    const tool = TOOL_TYPES.find(tt => tt.type === baseType);
                     const isConfigurable = tool?.configurable;
+                    const toolConfigId = `${id}_${t}`;
+                    const fnConfig = currentProject?.tool_configs?.[toolConfigId];
+                    // Show function name if configured
+                    const displayName = baseType === 'function' && fnConfig && 'name' in fnConfig && fnConfig.name 
+                      ? fnConfig.name 
+                      : (tool?.label || t);
                     return (
                       <div 
                         key={t} 
@@ -272,11 +280,11 @@ export function Canvas() {
                           if (isConfigurable) {
                             e.stopPropagation();
                             selectNode(id);
-                            selectTool(`${id}_${t}`);
+                            selectTool(toolConfigId);
                           }
                         }}
                       >
-                        {tool?.icon} {tool?.label || t} {isConfigurable && <span className="text-blue-400">⚙</span>}
+                        {tool?.icon} {displayName} {isConfigurable && <span className="text-blue-400">⚙</span>}
                       </div>
                     );
                   })}
@@ -401,10 +409,44 @@ export function Canvas() {
 
   const onDrop = useCallback((e: DragEvent) => {
     e.preventDefault();
+    
+    // Check if dropping a tool
+    const toolType = e.dataTransfer.getData('tool-type');
+    if (toolType) {
+      // Find which node was dropped on by checking position
+      const reactFlowBounds = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - reactFlowBounds.left;
+      const y = e.clientY - reactFlowBounds.top;
+      
+      // Find node at drop position
+      const droppedOnNode = nodes.find(node => {
+        const nodeX = node.position.x;
+        const nodeY = node.position.y;
+        const nodeWidth = 120; // approximate
+        const nodeHeight = 80;
+        return x >= nodeX && x <= nodeX + nodeWidth && y >= nodeY && y <= nodeY + nodeHeight;
+      });
+      
+      if (droppedOnNode && droppedOnNode.id !== 'START' && droppedOnNode.id !== 'END') {
+        addToolToAgent(droppedOnNode.id, toolType);
+        selectNode(droppedOnNode.id);
+        if (TOOL_TYPES.find(t => t.type === toolType)?.configurable) {
+          const agentTools = currentProject?.agents[droppedOnNode.id]?.tools || [];
+          const functionCount = agentTools.filter(t => t.startsWith('function')).length;
+          const newToolId = toolType === 'function' 
+            ? `${droppedOnNode.id}_function_${functionCount + 1}`
+            : `${droppedOnNode.id}_${toolType}`;
+          selectTool(newToolId);
+        }
+      }
+      return;
+    }
+    
+    // Otherwise, creating an agent
     const type = e.dataTransfer.getData('application/reactflow');
     if (!type) return;
     createAgent(type);
-  }, [createAgent]);
+  }, [createAgent, nodes, addToolToAgent, selectNode, selectTool, currentProject]);
 
   const onConnect = useCallback((params: Connection) => {
     if (params.source && params.target) {
@@ -460,16 +502,31 @@ export function Canvas() {
           <h3 className="font-semibold mb-2">Tools</h3>
           <div className="space-y-1 flex-1">
             {TOOL_TYPES.map(({ type, label, icon, configurable }) => {
-              const isAdded = selectedNodeId && currentProject?.agents[selectedNodeId]?.tools?.includes(type);
+              const agentTools = selectedNodeId ? currentProject?.agents[selectedNodeId]?.tools || [] : [];
+              // For function tools, check if any function_* exists; for others, exact match
+              const isAdded = type === 'function' 
+                ? agentTools.some(t => t.startsWith('function'))
+                : agentTools.includes(type);
+              const functionCount = type === 'function' ? agentTools.filter(t => t.startsWith('function')).length : 0;
               return (
                 <div
                   key={type}
-                  className={`p-2 rounded text-sm cursor-pointer flex items-center gap-2 ${
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('tool-type', type);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className={`p-2 rounded text-sm cursor-grab flex items-center gap-2 ${
                     isAdded ? 'bg-green-800 hover:bg-green-700' : 'bg-gray-700 hover:bg-gray-600'
                   } ${!selectedNodeId ? 'opacity-50' : ''}`}
                   onClick={() => {
                     if (!selectedNodeId) return;
-                    if (isAdded) {
+                    // Function tools can always be added (multiple allowed)
+                    if (type === 'function') {
+                      addToolToAgent(selectedNodeId, type);
+                      const newToolId = `${selectedNodeId}_function_${functionCount + 1}`;
+                      if (configurable) selectTool(newToolId);
+                    } else if (isAdded) {
                       removeToolFromAgent(selectedNodeId, type);
                     } else {
                       addToolToAgent(selectedNodeId, type);
@@ -479,7 +536,8 @@ export function Canvas() {
                 >
                   <span>{icon}</span>
                   <span className="text-xs">{label}</span>
-                  {isAdded && <span className="ml-auto text-xs">✓</span>}
+                  {type === 'function' && functionCount > 0 && <span className="ml-auto text-xs bg-blue-600 px-1 rounded">{functionCount}</span>}
+                  {type !== 'function' && isAdded && <span className="ml-auto text-xs">✓</span>}
                 </div>
               );
             })}
@@ -657,13 +715,17 @@ export function Canvas() {
                     <label className="block text-sm text-gray-400 mb-1">Tools</label>
                     <div className="flex flex-wrap gap-1">
                       {selectedAgent.tools.map(t => {
-                        const tool = TOOL_TYPES.find(tt => tt.type === t);
+                        const baseType = t.startsWith('function') ? 'function' : t;
+                        const tool = TOOL_TYPES.find(tt => tt.type === baseType);
                         const isConfigurable = tool?.configurable;
                         const toolId = `${selectedNodeId}_${t}`;
-                        const hasConfig = currentProject?.tool_configs?.[toolId];
+                        const toolConfig = currentProject?.tool_configs?.[toolId];
+                        const displayName = baseType === 'function' && toolConfig && 'name' in toolConfig && toolConfig.name
+                          ? toolConfig.name
+                          : (tool?.label || t);
                         return (
-                          <span key={t} className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${hasConfig ? 'bg-green-800' : 'bg-gray-700'}`}>
-                            {tool?.icon} {tool?.label || t}
+                          <span key={t} className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${toolConfig ? 'bg-green-800' : 'bg-gray-700'}`}>
+                            {tool?.icon} {displayName}
                             {isConfigurable && (
                               <button onClick={() => selectTool(toolId)} className="ml-1 text-blue-400 hover:text-blue-300">⚙</button>
                             )}
@@ -865,38 +927,120 @@ Ok(json!({"response": text}))`
                           }},
                           { name: 'Send Email', icon: '📧', template: {
                             name: 'send_email',
-                            description: 'Send an email via SMTP',
+                            description: 'Send an email via SMTP (Gmail, Outlook, etc)',
                             parameters: [
                               { name: 'to', param_type: 'string' as const, description: 'Recipient email', required: true },
                               { name: 'subject', param_type: 'string' as const, description: 'Email subject', required: true },
                               { name: 'body', param_type: 'string' as const, description: 'Email body', required: true },
                             ],
-                            code: `// Requires: lettre crate
-// let mailer = SmtpTransport::relay("smtp.gmail.com")?.credentials(creds).build();
-// let email = Message::builder().from(from).to(to).subject(subject).body(body)?;
-// mailer.send(&email)?;
+                            code: `use lettre::{Message, SmtpTransport, Transport};
+use lettre::transport::smtp::authentication::Credentials;
+
+let smtp_user = std::env::var("SMTP_USER").unwrap_or_default();
+let smtp_pass = std::env::var("SMTP_PASS").unwrap_or_default();
+let smtp_host = std::env::var("SMTP_HOST").unwrap_or("smtp.gmail.com".to_string());
+
+if smtp_user.is_empty() || smtp_pass.is_empty() {
+    return Ok(json!({"error": "Set SMTP_USER and SMTP_PASS environment variables"}));
+}
+
+let email = Message::builder()
+    .from(smtp_user.parse().map_err(|e| adk_core::AdkError::Tool(format!("Invalid from: {}", e)))?)
+    .to(to.parse().map_err(|e| adk_core::AdkError::Tool(format!("Invalid to: {}", e)))?)
+    .subject(subject)
+    .body(body.to_string())
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+
+let creds = Credentials::new(smtp_user.clone(), smtp_pass);
+let mailer = SmtpTransport::relay(&smtp_host)
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?
+    .credentials(creds)
+    .build();
+
+mailer.send(&email).map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
 Ok(json!({"status": "sent", "to": to, "subject": subject}))`
                           }},
                           { name: 'Read File', icon: '📄', template: {
                             name: 'read_file',
-                            description: 'Read contents of a file',
+                            description: 'Read file from session workspace (isolated per session)',
                             parameters: [
-                              { name: 'path', param_type: 'string' as const, description: 'File path to read', required: true },
+                              { name: 'path', param_type: 'string' as const, description: 'File path relative to session workspace', required: true },
+                              { name: 'max_bytes', param_type: 'number' as const, description: 'Max bytes to read (default 1MB)', required: false },
                             ],
-                            code: `let content = std::fs::read_to_string(path)
+                            code: `// Session-isolated workspace
+let session_id = std::env::args().nth(1).unwrap_or_else(|| "default".to_string());
+let workspace = std::path::PathBuf::from(format!("/tmp/adk-workspace/{}", session_id));
+std::fs::create_dir_all(&workspace).ok();
+
+let full_path = workspace.join(path.trim_start_matches('/'));
+let max = if max_bytes > 0.0 { max_bytes as u64 } else { 1_000_000 };
+
+if !full_path.exists() {
+    return Ok(json!({"error": "File not found", "path": path, "workspace": workspace.display().to_string()}));
+}
+
+let meta = std::fs::metadata(&full_path)
     .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
-Ok(json!({"content": content, "path": path}))`
+
+if meta.is_dir() {
+    let entries: Vec<String> = std::fs::read_dir(&full_path)
+        .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?
+        .filter_map(|e| e.ok().map(|e| e.file_name().to_string_lossy().to_string()))
+        .collect();
+    return Ok(json!({"type": "directory", "path": path, "entries": entries}));
+}
+
+let size = meta.len();
+if size > max {
+    return Ok(json!({"error": "File too large", "size": size, "max": max}));
+}
+
+match std::fs::read_to_string(&full_path) {
+    Ok(content) => Ok(json!({
+        "type": "text", "path": path, "size": size,
+        "lines": content.lines().count(), "content": content
+    })),
+    Err(_) => {
+        let bytes = std::fs::read(&full_path).map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+        Ok(json!({
+            "type": "binary", "path": path, "size": size,
+            "content": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes)
+        }))
+    }
+}`
                           }},
                           { name: 'Write File', icon: '💾', template: {
                             name: 'write_file',
-                            description: 'Write content to a file',
+                            description: 'Write file to session workspace (isolated per session)',
                             parameters: [
-                              { name: 'path', param_type: 'string' as const, description: 'File path to write', required: true },
+                              { name: 'path', param_type: 'string' as const, description: 'File path relative to session workspace', required: true },
                               { name: 'content', param_type: 'string' as const, description: 'Content to write', required: true },
+                              { name: 'append', param_type: 'boolean' as const, description: 'Append instead of overwrite', required: false },
                             ],
-                            code: `std::fs::write(path, content)
-    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
-Ok(json!({"status": "written", "path": path, "bytes": content.len()}))`
+                            code: `// Session-isolated workspace
+let session_id = std::env::args().nth(1).unwrap_or_else(|| "default".to_string());
+let workspace = std::path::PathBuf::from(format!("/tmp/adk-workspace/{}", session_id));
+
+let full_path = workspace.join(path.trim_start_matches('/'));
+
+// Create parent directories
+if let Some(parent) = full_path.parent() {
+    std::fs::create_dir_all(parent)
+        .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+}
+
+if append {
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true).append(true).open(&full_path)
+        .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+    file.write_all(content.as_bytes())
+        .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+} else {
+    std::fs::write(&full_path, content)
+        .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+}
+Ok(json!({"status": "written", "path": path, "bytes": content.len(), "workspace": workspace.display().to_string()}))`
                           }},
                           { name: 'Run Command', icon: '⚡', template: {
                             name: 'run_command',
@@ -994,13 +1138,29 @@ Ok(json!({"result": result, "operation": operation}))`
                           <button
                             key={t.name}
                             className="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-left flex items-center gap-1"
-                            onClick={() => updateToolConfig(selectedToolId, { ...fnConfig, ...t.template })}
+                            title="Click to apply, Shift+Click to add as new tool"
+                            onClick={(e) => {
+                              if (e.shiftKey && selectedNodeId) {
+                                // Add as new function tool
+                                addToolToAgent(selectedNodeId, 'function');
+                                const agentTools = currentProject?.agents[selectedNodeId]?.tools || [];
+                                const functionCount = agentTools.filter(t => t.startsWith('function')).length;
+                                const newToolId = `${selectedNodeId}_function_${functionCount + 1}`;
+                                setTimeout(() => {
+                                  updateToolConfig(newToolId, { type: 'function', ...t.template });
+                                  selectTool(newToolId);
+                                }, 50);
+                              } else {
+                                updateToolConfig(selectedToolId, { ...fnConfig, ...t.template });
+                              }
+                            }}
                           >
                             <span>{t.icon}</span>
                             <span className="truncate">{t.name}</span>
                           </button>
                         ))}
                       </div>
+                      <div className="text-xs text-gray-500 mt-1">Shift+Click to add as new tool</div>
                     </div>
                   </div>
                 );

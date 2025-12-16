@@ -55,7 +55,7 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     // Generate function tools with parameter schemas
     for (agent_id, agent) in &project.agents {
         for tool_type in &agent.tools {
-            if tool_type == "function" {
+            if tool_type.starts_with("function") {
                 let tool_id = format!("{}_{}", agent_id, tool_type);
                 if let Some(ToolConfig::Function(config)) = project.tool_configs.get(&tool_id) {
                     code.push_str(&generate_function_schema(config));
@@ -145,7 +145,12 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     
     code.push_str("        .compile()?;\n\n");
     
-    // Interactive loop with streaming
+    // Interactive loop with streaming and conversation memory
+    code.push_str("    // Get session ID from args or generate new one\n");
+    code.push_str("    let session_id = std::env::args().nth(1).unwrap_or_else(|| uuid::Uuid::new_v4().to_string());\n");
+    code.push_str("    println!(\"SESSION:{}\", session_id);\n\n");
+    code.push_str("    // Conversation history for memory\n");
+    code.push_str("    let mut history: Vec<(String, String)> = Vec::new();\n\n");
     code.push_str("    // Interactive loop\n");
     code.push_str("    println!(\"Graph workflow ready. Type your message (or 'quit' to exit):\");\n");
     code.push_str("    let stdin = std::io::stdin();\n");
@@ -159,12 +164,19 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     code.push_str("        stdin.read_line(&mut input)?;\n");
     code.push_str("        let msg = input.trim();\n");
     code.push_str("        if msg.is_empty() || msg == \"quit\" { break; }\n\n");
+    code.push_str("        // Build message with conversation history\n");
+    code.push_str("        let context = if history.is_empty() {\n");
+    code.push_str("            msg.to_string()\n");
+    code.push_str("        } else {\n");
+    code.push_str("            let hist: String = history.iter().map(|(u, a)| format!(\"User: {}\\nAssistant: {}\\n\", u, a)).collect();\n");
+    code.push_str("            format!(\"{}\\nUser: {}\", hist, msg)\n");
+    code.push_str("        };\n\n");
     code.push_str("        let mut state = State::new();\n");
-    code.push_str("        state.insert(\"message\".to_string(), json!(msg));\n");
+    code.push_str("        state.insert(\"message\".to_string(), json!(context));\n");
     code.push_str("        \n");
     code.push_str("        use adk_graph::StreamMode;\n");
     code.push_str("        use tokio_stream::StreamExt;\n");
-    code.push_str("        let stream = graph.stream(state, ExecutionConfig::new(&format!(\"turn-{}\", turn)), StreamMode::Debug);\n");
+    code.push_str("        let stream = graph.stream(state, ExecutionConfig::new(&format!(\"{}-turn-{}\", session_id, turn)), StreamMode::Debug);\n");
     code.push_str("        tokio::pin!(stream);\n");
     code.push_str("        let mut final_response = String::new();\n");
     code.push_str("        \n");
@@ -186,8 +198,10 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     code.push_str("            }\n");
     code.push_str("        }\n");
     code.push_str("        turn += 1;\n\n");
+    code.push_str("        // Save to history\n");
     code.push_str("        if !final_response.is_empty() {\n");
-    code.push_str("            println!(\"RESPONSE:{}\", final_response);\n");
+    code.push_str("            history.push((msg.to_string(), final_response.clone()));\n");
+    code.push_str("            println!(\"RESPONSE:{}\", serde_json::to_string(&final_response).unwrap_or_default());\n");
     code.push_str("        }\n");
     code.push_str("    }\n\n");
     
@@ -263,19 +277,21 @@ fn generate_llm_node(id: &str, agent: &AgentSchema, project: &ProjectSchema, is_
     }
     
     for tool_type in &agent.tools {
-        match tool_type.as_str() {
-            "google_search" => code.push_str("            .tool(Arc::new(GoogleSearchTool::new()))\n"),
-            "exit_loop" => code.push_str("            .tool(Arc::new(ExitLoopTool::new()))\n"),
-            "load_artifact" => code.push_str("            .tool(Arc::new(LoadArtifactsTool::new()))\n"),
-            "function" => {
-                let tool_id = format!("{}_{}", id, tool_type);
-                if let Some(ToolConfig::Function(config)) = project.tool_configs.get(&tool_id) {
-                    let struct_name = to_pascal_case(&config.name);
-                    code.push_str(&format!("            .tool(Arc::new(FunctionTool::new(\"{}\", \"{}\", {}_fn).with_parameters_schema::<{}Args>()))\n", 
-                        config.name, config.description.replace('"', "\\\""), config.name, struct_name));
-                }
+        // Handle function_1, function_2, etc.
+        if tool_type.starts_with("function") {
+            let tool_id = format!("{}_{}", id, tool_type);
+            if let Some(ToolConfig::Function(config)) = project.tool_configs.get(&tool_id) {
+                let struct_name = to_pascal_case(&config.name);
+                code.push_str(&format!("            .tool(Arc::new(FunctionTool::new(\"{}\", \"{}\", {}_fn).with_parameters_schema::<{}Args>()))\n", 
+                    config.name, config.description.replace('"', "\\\""), config.name, struct_name));
             }
-            _ => {}
+        } else {
+            match tool_type.as_str() {
+                "google_search" => code.push_str("            .tool(Arc::new(GoogleSearchTool::new()))\n"),
+                "exit_loop" => code.push_str("            .tool(Arc::new(ExitLoopTool::new()))\n"),
+                "load_artifact" => code.push_str("            .tool(Arc::new(LoadArtifactsTool::new()))\n"),
+                _ => {}
+            }
         }
     }
     
@@ -474,14 +490,49 @@ fn generate_cargo_toml(project: &ProjectSchema) -> String {
         name = format!("project_{}", name);
     }
     
-    // Check if any function tool code uses reqwest
-    let needs_reqwest = project.tool_configs.values().any(|tc| {
-        if let ToolConfig::Function(fc) = tc {
-            fc.code.contains("reqwest::")
-        } else {
-            false
-        }
-    });
+    // Check if any function tool code uses specific crates
+    let code_uses = |pattern: &str| -> bool {
+        project.tool_configs.values().any(|tc| {
+            if let ToolConfig::Function(fc) = tc {
+                fc.code.contains(pattern)
+            } else {
+                false
+            }
+        })
+    };
+    
+    let needs_reqwest = code_uses("reqwest::");
+    let needs_lettre = code_uses("lettre::");
+    let needs_base64 = code_uses("base64::");
+    
+    // Use path dependencies in dev mode, version dependencies in prod
+    let use_path_deps = std::env::var("ADK_DEV_MODE").is_ok();
+    
+    let adk_root = "/data/projects/production/adk/adk-rust";
+    
+    let adk_deps = if use_path_deps {
+        format!(r#"adk-agent = {{ path = "{}/adk-agent" }}
+adk-core = {{ path = "{}/adk-core" }}
+adk-model = {{ path = "{}/adk-model" }}
+adk-tool = {{ path = "{}/adk-tool" }}
+adk-graph = {{ path = "{}/adk-graph" }}"#, adk_root, adk_root, adk_root, adk_root, adk_root)
+    } else {
+        r#"adk-agent = "0.1.7"
+adk-core = "0.1.7"
+adk-model = "0.1.7"
+adk-tool = "0.1.7"
+adk-graph = "0.1.7""#.to_string()
+    };
+    
+    // In dev mode, also patch gemini-rust to use vendored version with grounding_metadata
+    let patch_section = if use_path_deps {
+        format!(r#"
+[patch.crates-io]
+gemini-rust = {{ path = "{}/vendor/gemini-rust" }}
+"#, adk_root)
+    } else {
+        String::new()
+    };
     
     let mut deps = format!(r#"[package]
 name = "{}"
@@ -489,11 +540,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-adk-agent = "0.1.7"
-adk-core = "0.1.7"
-adk-model = "0.1.7"
-adk-tool = "0.1.7"
-adk-graph = "0.1.7"
+{}
 tokio = {{ version = "1", features = ["full", "macros"] }}
 tokio-stream = "0.1"
 anyhow = "1"
@@ -501,10 +548,17 @@ serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
 schemars = "0.8"
 tracing-subscriber = {{ version = "0.3", features = ["json", "env-filter"] }}
-"#, name);
+uuid = {{ version = "1", features = ["v4"] }}
+{}"#, name, adk_deps, patch_section);
 
     if needs_reqwest {
         deps.push_str("reqwest = { version = \"0.11\", features = [\"json\"] }\n");
+    }
+    if needs_lettre {
+        deps.push_str("lettre = \"0.11\"\n");
+    }
+    if needs_base64 {
+        deps.push_str("base64 = \"0.21\"\n");
     }
     
     deps

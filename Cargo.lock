@@ -345,6 +345,7 @@ dependencies = [
  "futures",
  "handlebars",
  "jsonschema 0.26.2",
+ "lazy_static",
  "serde",
  "serde_json",
  "thiserror 2.0.17",

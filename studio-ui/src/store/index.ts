@@ -159,13 +159,23 @@ export const useStore = create<StudioState>((set, get) => ({
     set((s) => {
       if (!s.currentProject) return s;
       const agent = s.currentProject.agents[agentId];
-      if (!agent || agent.tools.includes(toolType)) return s;
+      if (!agent) return s;
+      
+      // For function tools, generate unique ID to allow multiple
+      let toolId = toolType;
+      if (toolType === 'function') {
+        const existingFunctions = agent.tools.filter(t => t.startsWith('function'));
+        toolId = `function_${existingFunctions.length + 1}`;
+      } else if (agent.tools.includes(toolType)) {
+        return s; // Non-function tools can only be added once
+      }
+      
       return {
         currentProject: {
           ...s.currentProject,
           agents: {
             ...s.currentProject.agents,
-            [agentId]: { ...agent, tools: [...agent.tools, toolType] },
+            [agentId]: { ...agent, tools: [...agent.tools, toolId] },
           },
         },
       };

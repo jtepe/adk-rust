@@ -47,7 +47,7 @@ impl GeminiModel {
             }
         }
         
-        // Add grounding metadata as text if present
+        // Add grounding metadata as text if present (required for Google Search grounding compliance)
         if let Some(grounding) = resp.candidates.first().and_then(|c| c.grounding_metadata.as_ref()) {
             if let Some(queries) = &grounding.web_search_queries {
                 if !queries.is_empty() {

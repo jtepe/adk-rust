@@ -18,9 +18,11 @@ export function useSSE(projectId: string | null, binaryPath?: string | null) {
   const [currentAgent, setCurrentAgent] = useState('');
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [events, setEvents] = useState<TraceEvent[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const textRef = useRef('');
   const agentRef = useRef('');
+  const sessionRef = useRef<string | null>(null);
 
   const addEvent = (type: TraceEvent['type'], data: string, agent?: string) => {
     setEvents(prev => [...prev, { type, timestamp: Date.now(), data, agent: agent || agentRef.current }]);
@@ -43,9 +45,18 @@ export function useSSE(projectId: string | null, binaryPath?: string | null) {
       if (binaryPath) {
         params.set('binary_path', binaryPath);
       }
+      // Pass session ID if we have one
+      if (sessionRef.current) {
+        params.set('session_id', sessionRef.current);
+      }
       const es = new EventSource(`/api/projects/${projectId}/stream?${params}`);
       esRef.current = es;
       let ended = false;
+
+      es.addEventListener('session', (e) => {
+        sessionRef.current = e.data;
+        setSessionId(e.data);
+      });
 
       es.addEventListener('agent', (e) => {
         if (textRef.current) {
@@ -153,5 +164,15 @@ export function useSSE(projectId: string | null, binaryPath?: string | null) {
 
   const clearEvents = useCallback(() => setEvents([]), []);
 
-  return { send, cancel, isStreaming, streamingText, currentAgent, toolCalls, events, clearEvents };
+  const newSession = useCallback(async () => {
+    // Kill the old session process on the server
+    if (sessionRef.current) {
+      await fetch(`/api/sessions/${sessionRef.current}`, { method: 'DELETE' }).catch(() => {});
+    }
+    sessionRef.current = null;
+    setSessionId(null);
+    setEvents([]);
+  }, []);
+
+  return { send, cancel, isStreaming, streamingText, currentAgent, toolCalls, events, clearEvents, sessionId, newSession };
 }

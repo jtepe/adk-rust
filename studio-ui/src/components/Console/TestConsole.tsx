@@ -23,7 +23,7 @@ export function TestConsole({ onFlowPhase, onActiveAgent, binaryPath }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('chat');
-  const { send, cancel, isStreaming, streamingText, currentAgent, toolCalls, events, clearEvents } = useSSE(currentProject?.id ?? null, binaryPath);
+  const { send, cancel, isStreaming, streamingText, currentAgent, toolCalls, events, sessionId, newSession } = useSSE(currentProject?.id ?? null, binaryPath);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const eventsEndRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
@@ -79,12 +79,9 @@ export function TestConsole({ onFlowPhase, onActiveAgent, binaryPath }: Props) {
     );
   };
 
-  const clearChat = async () => {
-    if (currentProject) {
-      await fetch(`/api/projects/${currentProject.id}/session`, { method: 'DELETE' });
-    }
+  const handleNewSession = () => {
     setMessages([]);
-    clearEvents();
+    newSession();
   };
 
   const handleCancel = () => {
@@ -128,7 +125,7 @@ export function TestConsole({ onFlowPhase, onActiveAgent, binaryPath }: Props) {
   return (
     <div className="flex flex-col h-full bg-studio-panel border-t border-gray-700">
       <div className="p-2 border-b border-gray-700 text-sm flex justify-between items-center">
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
           <button 
             onClick={() => setActiveTab('chat')}
             className={`px-3 py-1 rounded text-xs ${activeTab === 'chat' ? 'bg-studio-highlight' : 'hover:bg-gray-700'}`}
@@ -141,11 +138,20 @@ export function TestConsole({ onFlowPhase, onActiveAgent, binaryPath }: Props) {
           >
             📋 Events {events.length > 0 && `(${events.length})`}
           </button>
+          {sessionId && (
+            <span className="ml-2 text-xs text-gray-500" title={sessionId}>
+              Session: {sessionId.slice(0, 8)}...
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
-          {messages.length > 0 && !isStreaming && (
-            <button onClick={clearChat} className="text-gray-400 text-xs hover:text-white">Clear</button>
-          )}
+          <button 
+            onClick={handleNewSession} 
+            className="text-green-400 text-xs hover:text-green-300 flex items-center gap-1"
+            title="Start new conversation"
+          >
+            ➕ New
+          </button>
           {isStreaming && (
             <button onClick={handleCancel} className="text-red-400 text-xs">Stop</button>
           )}

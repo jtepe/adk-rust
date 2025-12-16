@@ -114,6 +114,13 @@ impl<'a> PregelExecutor<'a> {
                     return;
                 }
 
+                // Emit node_start events BEFORE execution (in Debug mode)
+                if matches!(mode, StreamMode::Debug | StreamMode::Custom) {
+                    for node_name in &self.pending_nodes {
+                        yield Ok(StreamEvent::node_start(node_name, self.step));
+                    }
+                }
+
                 // Execute super-step
                 let result = match self.execute_super_step().await {
                     Ok(r) => r,
@@ -123,11 +130,13 @@ impl<'a> PregelExecutor<'a> {
                     }
                 };
 
-                // Yield events based on mode
+                // Yield events based on mode (node_end and custom events)
                 for event in &result.events {
-                    match mode {
-                        StreamMode::Custom => yield Ok(event.clone()),
-                        StreamMode::Debug => yield Ok(event.clone()),
+                    match (&mode, &event) {
+                        // Skip node_start since we already emitted it above
+                        (StreamMode::Custom | StreamMode::Debug, StreamEvent::NodeStart { .. }) => {}
+                        (StreamMode::Custom, _) => yield Ok(event.clone()),
+                        (StreamMode::Debug, _) => yield Ok(event.clone()),
                         _ => {}
                     }
                 }
