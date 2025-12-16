@@ -99,8 +99,9 @@ pub async fn delete_project(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Run project request
+/// Run project request (deprecated)
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct RunRequest {
     pub input: String,
 }
@@ -111,23 +112,13 @@ pub struct RunResponse {
     pub output: String,
 }
 
-/// Run a project with input
+/// Run a project with input (deprecated - use build + stream with binary_path)
 pub async fn run_project(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(req): Json<RunRequest>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_req): Json<RunRequest>,
 ) -> ApiResult<RunResponse> {
-    let api_key = std::env::var("GOOGLE_API_KEY")
-        .map_err(|_| err(StatusCode::BAD_REQUEST, "GOOGLE_API_KEY not set"))?;
-
-    let storage = state.storage.read().await;
-    let project = storage.get(id).await.map_err(|e| err(StatusCode::NOT_FOUND, e.to_string()))?;
-
-    let output = crate::runtime::run_project(&project, &req.input, &api_key)
-        .await
-        .map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    Ok(Json(RunResponse { output }))
+    Err(err(StatusCode::BAD_REQUEST, "Runtime execution removed. Use 'Build' then run via console with the compiled binary."))
 }
 
 

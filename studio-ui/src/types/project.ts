@@ -54,6 +54,7 @@ export interface FunctionToolConfig {
   name: string;
   description: string;
   parameters: FunctionParameter[];
+  code?: string;
 }
 
 export interface FunctionParameter {

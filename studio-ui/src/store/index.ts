@@ -178,6 +178,8 @@ export const useStore = create<StudioState>((set, get) => ({
       if (!s.currentProject) return s;
       const agent = s.currentProject.agents[agentId];
       if (!agent) return s;
+      const toolConfigId = `${agentId}_${toolType}`;
+      const { [toolConfigId]: _, ...remainingConfigs } = s.currentProject.tool_configs;
       return {
         currentProject: {
           ...s.currentProject,
@@ -185,7 +187,9 @@ export const useStore = create<StudioState>((set, get) => ({
             ...s.currentProject.agents,
             [agentId]: { ...agent, tools: agent.tools.filter(t => t !== toolType) },
           },
+          tool_configs: remainingConfigs,
         },
+        selectedToolId: s.selectedToolId === toolConfigId ? null : s.selectedToolId,
       };
     });
     setTimeout(() => get().saveProject(), 0);

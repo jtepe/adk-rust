@@ -52,12 +52,13 @@ fn generate_main_rs(project: &ProjectSchema) -> String {
     code.push_str("use std::sync::Arc;\n");
     code.push_str("use tracing_subscriber::{fmt, EnvFilter};\n\n");
     
-    // Generate function tools
+    // Generate function tools with parameter schemas
     for (agent_id, agent) in &project.agents {
         for tool_type in &agent.tools {
             if tool_type == "function" {
                 let tool_id = format!("{}_{}", agent_id, tool_type);
                 if let Some(ToolConfig::Function(config)) = project.tool_configs.get(&tool_id) {
+                    code.push_str(&generate_function_schema(config));
                     code.push_str(&generate_function_tool(config));
                 }
             }
@@ -269,8 +270,9 @@ fn generate_llm_node(id: &str, agent: &AgentSchema, project: &ProjectSchema, is_
             "function" => {
                 let tool_id = format!("{}_{}", id, tool_type);
                 if let Some(ToolConfig::Function(config)) = project.tool_configs.get(&tool_id) {
-                    code.push_str(&format!("            .tool(Arc::new(FunctionTool::new(\"{}\", \"{}\", {}_fn)))\n", 
-                        config.name, config.description.replace('"', "\\\""), config.name));
+                    let struct_name = to_pascal_case(&config.name);
+                    code.push_str(&format!("            .tool(Arc::new(FunctionTool::new(\"{}\", \"{}\", {}_fn).with_parameters_schema::<{}Args>()))\n", 
+                        config.name, config.description.replace('"', "\\\""), config.name, struct_name));
                 }
             }
             _ => {}
@@ -381,28 +383,88 @@ fn generate_function_tool(config: &crate::schema::FunctionToolConfig) -> String 
     
     code.push_str(&format!("async fn {}_fn(_ctx: Arc<dyn ToolContext>, args: Value) -> Result<Value, adk_core::AdkError> {{\n", fn_name));
     
-    let mut param_names = Vec::new();
+    // Generate parameter extraction
     for param in &config.parameters {
-        param_names.push(param.name.clone());
         let extract = match param.param_type {
-            crate::schema::ParamType::String => format!("    let {} = args[\"{}\"].as_str().unwrap_or(\"\");\n", param.name, param.name),
-            crate::schema::ParamType::Number => format!("    let {} = args[\"{}\"].as_f64().unwrap_or(0.0);\n", param.name, param.name),
-            crate::schema::ParamType::Boolean => format!("    let {} = args[\"{}\"].as_bool().unwrap_or(false);\n", param.name, param.name),
+            crate::schema::ParamType::String => format!(
+                "    let {} = args[\"{}\"].as_str().unwrap_or(\"\");\n", 
+                param.name, param.name
+            ),
+            crate::schema::ParamType::Number => format!(
+                "    let {} = args[\"{}\"].as_f64().unwrap_or(0.0);\n", 
+                param.name, param.name
+            ),
+            crate::schema::ParamType::Boolean => format!(
+                "    let {} = args[\"{}\"].as_bool().unwrap_or(false);\n", 
+                param.name, param.name
+            ),
         };
         code.push_str(&extract);
     }
     
-    // Generate dummy response that includes all parameters
-    code.push_str("\n    Ok(json!({\n");
-    code.push_str(&format!("        \"function\": \"{}\",\n", fn_name));
-    for name in &param_names {
-        code.push_str(&format!("        \"{}\": {},\n", name, name));
-    }
-    code.push_str("        \"status\": \"success\"\n");
-    code.push_str("    }))\n");
-    code.push_str("}\n\n");
+    code.push_str("\n");
     
+    // Insert user's code or generate placeholder
+    if config.code.is_empty() {
+        // Generate placeholder that echoes parameters
+        let param_json = config.parameters.iter()
+            .map(|p| format!("        \"{}\": {}", p.name, p.name))
+            .collect::<Vec<_>>()
+            .join(",\n");
+        code.push_str(&format!("    // TODO: Add function implementation\n"));
+        code.push_str(&format!("    Ok(json!({{\n"));
+        code.push_str(&format!("        \"function\": \"{}\",\n", fn_name));
+        if !param_json.is_empty() {
+            code.push_str(&param_json);
+            code.push_str(",\n");
+        }
+        code.push_str(&format!("        \"status\": \"not_implemented\"\n"));
+        code.push_str(&format!("    }}))\n"));
+    } else {
+        // Use user's actual code
+        code.push_str("    // User-defined implementation\n");
+        for line in config.code.lines() {
+            code.push_str(&format!("    {}\n", line));
+        }
+    }
+    
+    code.push_str("}\n\n");
     code
+}
+
+fn generate_function_schema(config: &crate::schema::FunctionToolConfig) -> String {
+    let mut code = String::new();
+    let struct_name = to_pascal_case(&config.name);
+    
+    code.push_str(&format!("#[derive(serde::Serialize, serde::Deserialize, schemars::JsonSchema)]\n"));
+    code.push_str(&format!("struct {}Args {{\n", struct_name));
+    
+    for param in &config.parameters {
+        if !param.description.is_empty() {
+            code.push_str(&format!("    /// {}\n", param.description));
+        }
+        let rust_type = match param.param_type {
+            crate::schema::ParamType::String => "String",
+            crate::schema::ParamType::Number => "f64",
+            crate::schema::ParamType::Boolean => "bool",
+        };
+        code.push_str(&format!("    {}: {},\n", param.name, rust_type));
+    }
+    
+    code.push_str("}\n\n");
+    code
+}
+
+fn to_pascal_case(s: &str) -> String {
+    s.split('_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(c) => c.to_uppercase().chain(chars).collect(),
+            }
+        })
+        .collect()
 }
 
 fn generate_cargo_toml(project: &ProjectSchema) -> String {
@@ -426,7 +488,9 @@ adk-graph = "0.1.7"
 tokio = {{ version = "1", features = ["full", "macros"] }}
 tokio-stream = "0.1"
 anyhow = "1"
+serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
+schemars = "0.8"
 tracing-subscriber = {{ version = "0.3", features = ["json", "env-filter"] }}
 "#, name)
 }

@@ -10,6 +10,7 @@ import {
   Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import Editor from '@monaco-editor/react';
 import { useStore } from '../../store';
 import { TestConsole } from '../Console/TestConsole';
 import { api, GeneratedProject } from '../../api/client';
@@ -34,6 +35,46 @@ const TOOL_TYPES = [
 
 type FlowPhase = 'idle' | 'input' | 'output';
 
+// Helper to generate full function template
+function generateFunctionTemplate(config: FunctionToolConfig): string {
+  const fnName = config.name || 'my_function';
+  const desc = config.description || 'No description provided';
+  const params = config.parameters.map(p => {
+    const extractor = p.param_type === 'number' ? 'as_f64().unwrap_or(0.0)' 
+      : p.param_type === 'boolean' ? 'as_bool().unwrap_or(false)' 
+      : 'as_str().unwrap_or("")';
+    return `    let ${p.name} = args["${p.name}"].${extractor};`;
+  }).join('\n');
+  
+  const userCode = config.code || '// Your logic here\nOk(json!({"status": "ok"}))';
+  const indentedCode = userCode.split('\n').map(line => line.startsWith('    ') ? line : `    ${line}`).join('\n');
+  
+  return `/// ${desc}
+async fn ${fnName}_fn(_ctx: Arc<dyn ToolContext>, args: Value) -> Result<Value, AdkError> {
+    // ═══════════════════════════════════════════════════════════════
+    // AUTO-GENERATED: Do not edit above this line
+    // Parameters extracted from your schema definitions
+    // ═══════════════════════════════════════════════════════════════
+${params}
+
+    // ═══════════════════════════════════════════════════════════════
+    // YOUR CODE: Edit below this line
+    // ═══════════════════════════════════════════════════════════════
+${indentedCode}
+}`;
+}
+
+// Extract user code from full template
+function extractUserCode(fullCode: string, config: FunctionToolConfig): string {
+  const lines = fullCode.split('\n');
+  // Find the "YOUR CODE" marker and extract everything after it until closing }
+  const yourCodeIdx = lines.findIndex(l => l.includes('YOUR CODE'));
+  if (yourCodeIdx === -1) return config.code || '';
+  const startIdx = yourCodeIdx + 2; // Skip marker + separator line
+  const endIdx = lines.length - 1; // Exclude closing }
+  return lines.slice(startIdx, endIdx).map(l => l.replace(/^    /, '')).join('\n');
+}
+
 export function Canvas() {
   const { currentProject, closeProject, saveProject, selectNode, selectedNodeId, updateAgent, addAgent, removeAgent, addEdge: addProjectEdge, removeEdge: removeProjectEdge, addToolToAgent, removeToolFromAgent, addSubAgentToContainer, selectedToolId, selectTool, updateToolConfig } = useStore();
   const [showConsole, setShowConsole] = useState(true);
@@ -44,6 +85,7 @@ export function Canvas() {
   const [buildOutput, setBuildOutput] = useState<{success: boolean, output: string, path: string | null} | null>(null);
   const [building, setBuilding] = useState(false);
   const [builtBinaryPath, setBuiltBinaryPath] = useState<string | null>(null);
+  const [showCodeEditor, setShowCodeEditor] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -765,6 +807,191 @@ export function Canvas() {
                         }}
                       >+ Add Parameter</button>
                     </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-sm text-gray-400">Code (Rust)</label>
+                        <button
+                          className="text-xs text-blue-400 hover:text-blue-300"
+                          onClick={() => {
+                            const template = generateFunctionTemplate(fnConfig);
+                            (window as any).__codeEditorModal = { fnConfig, template, selectedToolId, updateToolConfig };
+                            setShowCodeEditor(true);
+                          }}
+                        >✏️ Expand to Edit</button>
+                      </div>
+                      <textarea
+                        className="w-full px-2 py-2 bg-gray-900 border border-gray-600 rounded text-xs font-mono h-40 text-gray-400 cursor-pointer"
+                        value={generateFunctionTemplate(fnConfig)}
+                        readOnly
+                        onClick={() => setShowCodeEditor(true)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Quick Templates</label>
+                      <div className="grid grid-cols-2 gap-1">
+                        {[
+                          { name: 'HTTP Request', icon: '🌐', template: {
+                            name: 'http_request',
+                            description: 'Make HTTP requests to external APIs',
+                            parameters: [
+                              { name: 'url', param_type: 'string' as const, description: 'URL to request', required: true },
+                              { name: 'method', param_type: 'string' as const, description: 'GET, POST, PUT, DELETE', required: false },
+                              { name: 'body', param_type: 'string' as const, description: 'Request body (JSON)', required: false },
+                            ],
+                            code: `let method = args["method"].as_str().unwrap_or("GET");
+let client = reqwest::Client::new();
+let mut req = match method {
+    "POST" => client.post(url),
+    "PUT" => client.put(url),
+    "DELETE" => client.delete(url),
+    _ => client.get(url),
+};
+if !body.is_empty() {
+    req = req.header("Content-Type", "application/json").body(body.to_string());
+}
+let resp = req.send().await.map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+let text = resp.text().await.map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+Ok(json!({"response": text}))`
+                          }},
+                          { name: 'Send Email', icon: '📧', template: {
+                            name: 'send_email',
+                            description: 'Send an email via SMTP',
+                            parameters: [
+                              { name: 'to', param_type: 'string' as const, description: 'Recipient email', required: true },
+                              { name: 'subject', param_type: 'string' as const, description: 'Email subject', required: true },
+                              { name: 'body', param_type: 'string' as const, description: 'Email body', required: true },
+                            ],
+                            code: `// Requires: lettre crate
+// let mailer = SmtpTransport::relay("smtp.gmail.com")?.credentials(creds).build();
+// let email = Message::builder().from(from).to(to).subject(subject).body(body)?;
+// mailer.send(&email)?;
+Ok(json!({"status": "sent", "to": to, "subject": subject}))`
+                          }},
+                          { name: 'Read File', icon: '📄', template: {
+                            name: 'read_file',
+                            description: 'Read contents of a file',
+                            parameters: [
+                              { name: 'path', param_type: 'string' as const, description: 'File path to read', required: true },
+                            ],
+                            code: `let content = std::fs::read_to_string(path)
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+Ok(json!({"content": content, "path": path}))`
+                          }},
+                          { name: 'Write File', icon: '💾', template: {
+                            name: 'write_file',
+                            description: 'Write content to a file',
+                            parameters: [
+                              { name: 'path', param_type: 'string' as const, description: 'File path to write', required: true },
+                              { name: 'content', param_type: 'string' as const, description: 'Content to write', required: true },
+                            ],
+                            code: `std::fs::write(path, content)
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+Ok(json!({"status": "written", "path": path, "bytes": content.len()}))`
+                          }},
+                          { name: 'Run Command', icon: '⚡', template: {
+                            name: 'run_command',
+                            description: 'Execute a shell command',
+                            parameters: [
+                              { name: 'command', param_type: 'string' as const, description: 'Command to execute', required: true },
+                            ],
+                            code: `let output = std::process::Command::new("sh")
+    .arg("-c")
+    .arg(command)
+    .output()
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+let stdout = String::from_utf8_lossy(&output.stdout);
+let stderr = String::from_utf8_lossy(&output.stderr);
+Ok(json!({"stdout": stdout, "stderr": stderr, "success": output.status.success()}))`
+                          }},
+                          { name: 'JSON Transform', icon: '🔄', template: {
+                            name: 'json_transform',
+                            description: 'Transform JSON data using JSONPath',
+                            parameters: [
+                              { name: 'data', param_type: 'string' as const, description: 'JSON string to transform', required: true },
+                              { name: 'path', param_type: 'string' as const, description: 'JSONPath expression', required: true },
+                            ],
+                            code: `let parsed: Value = serde_json::from_str(data)
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+// Simple path extraction (for complex paths, use jsonpath crate)
+let result = path.split('.').fold(Some(&parsed), |acc, key| {
+    acc.and_then(|v| v.get(key))
+});
+Ok(json!({"result": result}))`
+                          }},
+                          { name: 'Database Query', icon: '🗄️', template: {
+                            name: 'db_query',
+                            description: 'Execute a database query',
+                            parameters: [
+                              { name: 'query', param_type: 'string' as const, description: 'SQL query to execute', required: true },
+                              { name: 'connection_string', param_type: 'string' as const, description: 'Database connection string', required: true },
+                            ],
+                            code: `// Requires: sqlx or rusqlite crate
+// let pool = SqlitePool::connect(connection_string).await?;
+// let rows = sqlx::query(query).fetch_all(&pool).await?;
+Ok(json!({"status": "executed", "query": query}))`
+                          }},
+                          { name: 'Webhook', icon: '🪝', template: {
+                            name: 'send_webhook',
+                            description: 'Send data to a webhook URL',
+                            parameters: [
+                              { name: 'webhook_url', param_type: 'string' as const, description: 'Webhook URL', required: true },
+                              { name: 'payload', param_type: 'string' as const, description: 'JSON payload', required: true },
+                            ],
+                            code: `let client = reqwest::Client::new();
+let resp = client.post(webhook_url)
+    .header("Content-Type", "application/json")
+    .body(payload.to_string())
+    .send()
+    .await
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+Ok(json!({"status": resp.status().as_u16(), "sent": true}))`
+                          }},
+                          { name: 'Slack Message', icon: '💬', template: {
+                            name: 'send_slack',
+                            description: 'Send a message to Slack',
+                            parameters: [
+                              { name: 'webhook_url', param_type: 'string' as const, description: 'Slack webhook URL', required: true },
+                              { name: 'message', param_type: 'string' as const, description: 'Message to send', required: true },
+                              { name: 'channel', param_type: 'string' as const, description: 'Channel (optional)', required: false },
+                            ],
+                            code: `let payload = json!({"text": message, "channel": channel});
+let client = reqwest::Client::new();
+client.post(webhook_url)
+    .json(&payload)
+    .send()
+    .await
+    .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+Ok(json!({"status": "sent", "message": message}))`
+                          }},
+                          { name: 'Calculator', icon: '🧮', template: {
+                            name: 'calculate',
+                            description: 'Perform mathematical calculations',
+                            parameters: [
+                              { name: 'operation', param_type: 'string' as const, description: 'add, subtract, multiply, divide', required: true },
+                              { name: 'a', param_type: 'number' as const, description: 'First number', required: true },
+                              { name: 'b', param_type: 'number' as const, description: 'Second number', required: true },
+                            ],
+                            code: `let result = match operation {
+    "add" => a + b,
+    "subtract" => a - b,
+    "multiply" => a * b,
+    "divide" => if b != 0.0 { a / b } else { return Ok(json!({"error": "Division by zero"})); },
+    _ => return Ok(json!({"error": "Unknown operation"})),
+};
+Ok(json!({"result": result, "operation": operation}))`
+                          }},
+                        ].map(t => (
+                          <button
+                            key={t.name}
+                            className="px-2 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-left flex items-center gap-1"
+                            onClick={() => updateToolConfig(selectedToolId, { ...fnConfig, ...t.template })}
+                          >
+                            <span>{t.icon}</span>
+                            <span className="truncate">{t.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
@@ -875,6 +1102,55 @@ export function Canvas() {
           </div>
         </div>
       )}
+
+      {/* Code Editor Modal */}
+      {showCodeEditor && selectedToolId && (() => {
+        const toolConfig = currentProject?.tool_configs?.[selectedToolId];
+        if (!toolConfig || toolConfig.type !== 'function') return null;
+        const fnConfig = toolConfig as FunctionToolConfig;
+        return (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowCodeEditor(false)}>
+            <div className="bg-studio-panel rounded-lg w-11/12 h-5/6 flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center p-4 border-b border-gray-700">
+                <h2 className="text-lg font-semibold text-blue-400">
+                  {fnConfig.name || 'function'}_fn
+                </h2>
+                <button onClick={() => setShowCodeEditor(false)} className="text-gray-400 hover:text-white text-xl">×</button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <Editor
+                  height="100%"
+                  defaultLanguage="rust"
+                  theme="vs-dark"
+                  value={generateFunctionTemplate(fnConfig)}
+                  onChange={(value) => {
+                    if (value) {
+                      const code = extractUserCode(value, fnConfig);
+                      updateToolConfig(selectedToolId, { ...fnConfig, code });
+                    }
+                  }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                    tabSize: 4,
+                  }}
+                />
+              </div>
+              <div className="p-4 border-t border-gray-700 flex justify-end gap-2">
+                <button 
+                  onClick={() => setShowCodeEditor(false)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
