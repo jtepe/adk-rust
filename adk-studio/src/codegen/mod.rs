@@ -429,13 +429,48 @@ fn generate_container_node(id: &str, agent: &AgentSchema, project: &ProjectSchem
         if let Some(sub) = project.agents.get(sub_id) {
             let model = sub.model.as_deref().unwrap_or("gemini-2.0-flash");
             code.push_str(&format!("    let {}_model = Arc::new(GeminiModel::new(&api_key, \"{}\")?);\n", sub_id, model));
-            code.push_str(&format!("    let {}_agent = LlmAgentBuilder::new(\"{}\")\n", sub_id, sub_id));
+            code.push_str(&format!("    let mut {}_builder = LlmAgentBuilder::new(\"{}\")\n", sub_id, sub_id));
             if !sub.instruction.is_empty() {
                 let escaped = sub.instruction.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
                 code.push_str(&format!("        .instruction(\"{}\")\n", escaped));
             }
-            code.push_str(&format!("        .model({}_model)\n", sub_id));
-            code.push_str("        .build()?;\n\n");
+            code.push_str(&format!("        .model({}_model);\n", sub_id));
+            
+            // Add tools for sub-agent
+            for tool_type in &sub.tools {
+                let tool_id = format!("{}_{}", sub_id, tool_type);
+                if tool_type.starts_with("function") {
+                    if let Some(ToolConfig::Function(config)) = project.tool_configs.get(&tool_id) {
+                        let fn_name = &config.name;
+                        let struct_name = to_pascal_case(fn_name);
+                        code.push_str(&format!("    {}_builder = {}_builder.tool(Arc::new(FunctionTool::new(\"{}\", \"{}\", {}_fn).with_parameters_schema::<{}Args>()));\n", 
+                            sub_id, sub_id, fn_name, config.description.replace('"', "\\\""), fn_name, struct_name));
+                    }
+                } else if tool_type.starts_with("mcp") {
+                    if let Some(ToolConfig::Mcp(config)) = project.tool_configs.get(&tool_id) {
+                        let var_suffix = tool_type.replace("mcp_", "mcp");
+                        code.push_str(&format!("    let mut {}_{}_cmd = Command::new(\"{}\");\n", sub_id, var_suffix, config.server_command));
+                        for arg in &config.server_args {
+                            code.push_str(&format!("    {}_{}_cmd.arg(\"{}\");\n", sub_id, var_suffix, arg));
+                        }
+                        code.push_str(&format!("    let {}_{}_client = tokio::time::timeout(\n", sub_id, var_suffix));
+                        code.push_str("        std::time::Duration::from_secs(10),\n");
+                        code.push_str(&format!("        ().serve(TokioChildProcess::new({}_{}_cmd)?)\n", sub_id, var_suffix));
+                        code.push_str(&format!("    ).await.map_err(|_| anyhow::anyhow!(\"MCP server '{}' failed to start within 10s\"))??;\n", config.server_command));
+                        code.push_str(&format!("    let {}_{}_toolset = McpToolset::new({}_{}_client);\n", sub_id, var_suffix, sub_id, var_suffix));
+                        code.push_str(&format!("    let {}_{}_tools = {}_{}_toolset.tools(Arc::new(MinimalContext::new())).await?;\n", sub_id, var_suffix, sub_id, var_suffix));
+                        code.push_str(&format!("    for tool in {}_{}_tools {{ {}_builder = {}_builder.tool(tool); }}\n", sub_id, var_suffix, sub_id, sub_id));
+                    }
+                } else if tool_type == "google_search" {
+                    code.push_str(&format!("    {}_builder = {}_builder.tool(Arc::new(GoogleSearchTool::new()));\n", sub_id, sub_id));
+                } else if tool_type == "exit_loop" {
+                    code.push_str(&format!("    {}_builder = {}_builder.tool(Arc::new(ExitLoopTool::new()));\n", sub_id, sub_id));
+                } else if tool_type == "load_artifact" {
+                    code.push_str(&format!("    {}_builder = {}_builder.tool(Arc::new(LoadArtifactsTool::new()));\n", sub_id, sub_id));
+                }
+            }
+            
+            code.push_str(&format!("    let {}_agent = {}_builder.build()?;\n\n", sub_id, sub_id));
         }
     }
     
