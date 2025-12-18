@@ -475,10 +475,14 @@ fn generate_container_node(id: &str, agent: &AgentSchema, project: &ProjectSchem
                             sub_id, sub_id, fn_name, config.description.replace('"', "\\\""), fn_name, struct_name));
                     }
                 } else if tool_type.starts_with("mcp") {
-                    let var_suffix = tool_type.replace("mcp_", "mcp");
-                    code.push_str(&format!("    for tool in {}_{}_tools {{\n", sub_id, var_suffix));
-                    code.push_str(&format!("        {}_builder = {}_builder.tool(tool);\n", sub_id, sub_id));
-                    code.push_str("    }\n");
+                    // Only generate tool loop if config exists (MCP setup was generated above)
+                    let tool_id = format!("{}_{}", sub_id, tool_type);
+                    if project.tool_configs.get(&tool_id).is_some() {
+                        let var_suffix = tool_type.replace("mcp_", "mcp");
+                        code.push_str(&format!("    for tool in {}_{}_tools {{\n", sub_id, var_suffix));
+                        code.push_str(&format!("        {}_builder = {}_builder.tool(tool);\n", sub_id, sub_id));
+                        code.push_str("    }\n");
+                    }
                 } else if tool_type == "google_search" {
                     code.push_str(&format!("    {}_builder = {}_builder.tool(Arc::new(GoogleSearchTool::new()));\n", sub_id, sub_id));
                 } else if tool_type == "exit_loop" {
