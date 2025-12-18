@@ -159,6 +159,16 @@ pub async fn stream_handler(
                         let name = fields.and_then(|f| f.get("tool.name")).and_then(|v| v.as_str()).unwrap_or("");
                         let result = fields.and_then(|f| f.get("tool.result")).and_then(|v| v.as_str()).unwrap_or("");
                         yield Ok(Event::default().event("tool_result").data(serde_json::json!({"name": name, "result": result}).to_string()));
+                    } else if msg == "Starting agent execution" {
+                        // Extract agent name from span
+                        let agent = json.get("span").and_then(|s| s.get("agent.name")).and_then(|v| v.as_str()).unwrap_or("");
+                        yield Ok(Event::default().event("log").data(serde_json::json!({"agent": agent, "message": "Starting..."}).to_string()));
+                    } else if msg == "Generating content" {
+                        // Model call - extract details
+                        let span = json.get("span");
+                        let model = span.and_then(|s| s.get("model.name")).and_then(|v| v.as_str()).unwrap_or("");
+                        let tools = span.and_then(|s| s.get("request.tools_count")).and_then(|v| v.as_str()).unwrap_or("0");
+                        yield Ok(Event::default().event("log").data(serde_json::json!({"message": format!("Calling {} (tools: {})", model, tools)}).to_string()));
                     }
                 }
             }
