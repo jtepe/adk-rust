@@ -13,6 +13,7 @@ import '@xyflow/react/dist/style.css';
 import Editor from '@monaco-editor/react';
 import { useStore } from '../../store';
 import { TestConsole } from '../Console/TestConsole';
+import { MenuBar } from '../MenuBar';
 import { api, GeneratedProject } from '../../api/client';
 import type { McpToolConfig, FunctionToolConfig, BrowserToolConfig, FunctionParameter, AgentSchema, ToolConfig } from '../../types/project';
 
@@ -76,7 +77,7 @@ function extractUserCode(fullCode: string, config: FunctionToolConfig): string {
 }
 
 export function Canvas() {
-  const { currentProject, closeProject, saveProject, selectNode, selectedNodeId, updateAgent: storeUpdateAgent, addAgent, removeAgent, addEdge: addProjectEdge, removeEdge: removeProjectEdge, addToolToAgent, removeToolFromAgent, addSubAgentToContainer, selectedToolId, selectTool, updateToolConfig: storeUpdateToolConfig } = useStore();
+  const { currentProject, openProject, closeProject, saveProject, selectNode, selectedNodeId, updateAgent: storeUpdateAgent, addAgent, removeAgent, addEdge: addProjectEdge, removeEdge: removeProjectEdge, addToolToAgent, removeToolFromAgent, addSubAgentToContainer, selectedToolId, selectTool, updateToolConfig: storeUpdateToolConfig } = useStore();
   const [showConsole, setShowConsole] = useState(true);
   const [flowPhase, setFlowPhase] = useState<FlowPhase>('idle');
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
@@ -634,6 +635,16 @@ export function Canvas() {
 
   return (
     <div className="flex flex-col h-full">
+      <MenuBar 
+        onExportCode={() => setShowCodeEditor(true)} 
+        onNewProject={async () => {
+          const name = prompt('Project name:');
+          if (name) {
+            const p = await api.projects.create(name);
+            openProject(p.id);
+          }
+        }}
+      />
       <div className="flex flex-1 overflow-hidden">
         {/* Palette */}
         <div className="w-48 bg-studio-panel border-r border-gray-700 p-4 flex flex-col overflow-y-auto">
