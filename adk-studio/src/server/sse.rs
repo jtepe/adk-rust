@@ -137,6 +137,10 @@ pub async fn stream_handler(
                     yield Ok(Event::default().event("session").data(sid));
                 } else if let Some(trace) = line.strip_prefix("TRACE:") {
                     yield Ok(Event::default().event("trace").data(trace));
+                } else if let Some(chunk) = line.strip_prefix("CHUNK:") {
+                    // Streaming chunk - emit immediately
+                    let decoded = serde_json::from_str::<String>(chunk).unwrap_or_else(|_| chunk.to_string());
+                    yield Ok(Event::default().event("chunk").data(decoded));
                 } else if let Some(response) = line.strip_prefix("RESPONSE:") {
                     let decoded = serde_json::from_str::<String>(response).unwrap_or_else(|_| response.to_string());
                     yield Ok(Event::default().event("chunk").data(decoded));
