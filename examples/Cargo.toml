@@ -369,11 +369,42 @@ name = "guardrail_agent"
 path = "guardrail_agent/main.rs"
 required-features = ["guardrails"]
 
+[[example]]
+name = "ollama_basic"
+path = "ollama_basic/main.rs"
+required-features = ["ollama"]
+
+[[example]]
+name = "ollama_tools"
+path = "ollama_tools/main.rs"
+required-features = ["ollama"]
+
+[[example]]
+name = "ollama_mcp"
+path = "ollama_mcp/main.rs"
+required-features = ["ollama"]
+
+[[example]]
+name = "ollama_sequential"
+path = "ollama_sequential/main.rs"
+required-features = ["ollama"]
+
+[[example]]
+name = "ollama_parallel"
+path = "ollama_parallel/main.rs"
+required-features = ["ollama"]
+
+[[example]]
+name = "ollama_supervisor"
+path = "ollama_supervisor/main.rs"
+required-features = ["ollama"]
+
 [features]
 default = []
 openai = ["adk-model/openai"]
 anthropic = ["adk-model/anthropic"]
 deepseek = ["adk-model/deepseek"]
+ollama = ["adk-model/ollama"]
 realtime-openai = ["adk-realtime/openai"]
 realtime-gemini = ["adk-realtime/gemini"]
 browser = ["dep:adk-browser", "dep:reqwest"]

@@ -11,6 +11,7 @@
 //! - `AzureOpenAIClient` - Azure OpenAI Service - requires `openai` feature
 //! - `AnthropicClient` - Anthropic Claude models (Claude 4, Claude 3.5, etc.) - requires `anthropic` feature
 //! - `DeepSeekClient` - DeepSeek models (deepseek-chat, deepseek-reasoner) - requires `deepseek` feature
+//! - `OllamaModel` - Local LLMs via Ollama (LLaMA, Mistral, Qwen, etc.) - requires `ollama` feature
 //! - [`MockLlm`] - Mock LLM for testing
 //!
 //! ## Quick Start
@@ -95,6 +96,15 @@
 //! - Multimodal input (text, images, audio, video, PDF)
 //! - Generation configuration (temperature, top_p, etc.)
 //! - OpenAI-compatible APIs (Ollama, vLLM, etc.)
+//!
+//! ### Ollama (Local)
+//!
+//! ```rust,ignore
+//! use adk_model::ollama::{OllamaModel, OllamaConfig};
+//!
+//! // Default: localhost:11434
+//! let model = OllamaModel::new(OllamaConfig::new("llama3.2")).unwrap();
+//! ```
 
 #[cfg(feature = "anthropic")]
 pub mod anthropic;
@@ -103,6 +113,8 @@ pub mod deepseek;
 #[cfg(feature = "gemini")]
 pub mod gemini;
 pub mod mock;
+#[cfg(feature = "ollama")]
+pub mod ollama;
 #[cfg(feature = "openai")]
 pub mod openai;
 
@@ -113,5 +125,7 @@ pub use deepseek::{DeepSeekClient, DeepSeekConfig};
 #[cfg(feature = "gemini")]
 pub use gemini::GeminiModel;
 pub use mock::MockLlm;
+#[cfg(feature = "ollama")]
+pub use ollama::{OllamaConfig, OllamaModel};
 #[cfg(feature = "openai")]
 pub use openai::{AzureConfig, AzureOpenAIClient, OpenAIClient, OpenAIConfig};
