@@ -409,6 +409,14 @@ name = "groq_tools"
 path = "groq_tools/main.rs"
 required-features = ["groq"]
 
+[[example]]
+name = "auth_basic"
+path = "auth_basic/main.rs"
+
+[[example]]
+name = "auth_audit"
+path = "auth_audit/main.rs"
+
 [features]
 default = []
 openai = ["adk-model/openai"]
@@ -436,6 +444,7 @@ adk-realtime.workspace = true
 adk-graph.workspace = true
 adk-eval.workspace = true
 adk-ui.workspace = true
+adk-auth.workspace = true
 adk-browser = { workspace = true, optional = true }
 adk-guardrail = { workspace = true, optional = true }
 tokio.workspace = true

@@ -91,5 +91,6 @@ adk-eval = { path = "adk-eval", version = "0.1.8" }
 adk-ui = { path = "adk-ui", version = "0.1.8" }
 adk-telemetry = { path = "adk-telemetry", version = "0.1.8" }
 adk-guardrail = { path = "adk-guardrail", version = "0.1.8" }
+adk-auth = { path = "adk-auth", version = "0.1.8" }
 adk-studio = { path = "adk-studio", version = "0.1.8" }
 adk-gemini = { path = "adk-gemini", version = "0.1.8" }
