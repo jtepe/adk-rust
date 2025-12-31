@@ -1,15 +1,16 @@
 //! Middleware for integrating access control with adk-core.
 //!
 //! This module provides a `ProtectedTool` wrapper that enforces permissions
-//! before tool execution.
+//! before tool execution and optionally logs audit events.
 
+use crate::audit::{AuditEvent, AuditOutcome, AuditSink};
 use crate::{AccessControl, Permission};
 use adk_core::{Result, Tool, ToolContext};
 use async_trait::async_trait;
 use serde_json::Value;
 use std::sync::Arc;
 
-/// A tool wrapper that enforces access control.
+/// A tool wrapper that enforces access control and optionally logs audit events.
 ///
 /// Wraps any tool and checks permissions before execution.
 ///
@@ -23,11 +24,12 @@ use std::sync::Arc;
 ///     .role(Role::new("user").allow(Permission::Tool("search".into())))
 ///     .build()?;
 ///
-/// let protected_search = ProtectedTool::new(search_tool, ac);
+/// let protected_search = ProtectedTool::new(search_tool, Arc::new(ac));
 /// ```
 pub struct ProtectedTool<T: Tool> {
     inner: T,
     access_control: Arc<AccessControl>,
+    audit_sink: Option<Arc<dyn AuditSink>>,
 }
 
 impl<T: Tool> ProtectedTool<T> {
@@ -36,6 +38,16 @@ impl<T: Tool> ProtectedTool<T> {
         Self {
             inner: tool,
             access_control,
+            audit_sink: None,
+        }
+    }
+
+    /// Create a new protected tool with audit logging.
+    pub fn with_audit(tool: T, access_control: Arc<AccessControl>, audit_sink: Arc<dyn AuditSink>) -> Self {
+        Self {
+            inner: tool,
+            access_control,
+            audit_sink: Some(audit_sink),
         }
     }
 }
@@ -68,12 +80,28 @@ impl<T: Tool + Send + Sync> Tool for ProtectedTool<T> {
 
     async fn execute(&self, ctx: Arc<dyn ToolContext>, args: Value) -> Result<Value> {
         let user_id = ctx.user_id();
-        let permission = Permission::Tool(self.name().to_string());
+        let tool_name = self.name();
+        let permission = Permission::Tool(tool_name.to_string());
 
         // Check permission
-        self.access_control
-            .check(user_id, &permission)
-            .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+        let check_result = self.access_control.check(user_id, &permission);
+
+        // Log audit event if sink is configured
+        if let Some(sink) = &self.audit_sink {
+            let outcome = if check_result.is_ok() {
+                AuditOutcome::Allowed
+            } else {
+                AuditOutcome::Denied
+            };
+            let event = AuditEvent::tool_access(user_id, tool_name, outcome)
+                .with_session(ctx.session_id());
+            
+            // Log asynchronously (don't block on audit failure)
+            let _ = sink.log(event).await;
+        }
+
+        // Return error if access denied
+        check_result.map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
 
         // Execute the tool
         self.inner.execute(ctx, args).await
@@ -86,6 +114,15 @@ pub trait ToolExt: Tool + Sized {
     fn with_access_control(self, ac: Arc<AccessControl>) -> ProtectedTool<Self> {
         ProtectedTool::new(self, ac)
     }
+
+    /// Wrap this tool with access control and audit logging.
+    fn with_access_control_and_audit(
+        self,
+        ac: Arc<AccessControl>,
+        audit: Arc<dyn AuditSink>,
+    ) -> ProtectedTool<Self> {
+        ProtectedTool::with_audit(self, ac, audit)
+    }
 }
 
 impl<T: Tool> ToolExt for T {}
@@ -93,6 +130,7 @@ impl<T: Tool> ToolExt for T {}
 /// A collection of auth utilities for integrating with ADK.
 pub struct AuthMiddleware {
     access_control: Arc<AccessControl>,
+    audit_sink: Option<Arc<dyn AuditSink>>,
 }
 
 impl AuthMiddleware {
@@ -100,6 +138,15 @@ impl AuthMiddleware {
     pub fn new(access_control: AccessControl) -> Self {
         Self {
             access_control: Arc::new(access_control),
+            audit_sink: None,
+        }
+    }
+
+    /// Create a new auth middleware with audit logging.
+    pub fn with_audit(access_control: AccessControl, audit_sink: impl AuditSink + 'static) -> Self {
+        Self {
+            access_control: Arc::new(access_control),
+            audit_sink: Some(Arc::new(audit_sink)),
         }
     }
 
@@ -110,17 +157,23 @@ impl AuthMiddleware {
 
     /// Wrap a tool with access control.
     pub fn protect<T: Tool>(&self, tool: T) -> ProtectedTool<T> {
-        ProtectedTool::new(tool, self.access_control.clone())
+        match &self.audit_sink {
+            Some(sink) => ProtectedTool::with_audit(tool, self.access_control.clone(), sink.clone()),
+            None => ProtectedTool::new(tool, self.access_control.clone()),
+        }
     }
 
     /// Wrap multiple tools with access control.
-    pub fn protect_all(
-        &self,
-        tools: Vec<Arc<dyn Tool>>,
-    ) -> Vec<Arc<dyn Tool>> {
+    pub fn protect_all(&self, tools: Vec<Arc<dyn Tool>>) -> Vec<Arc<dyn Tool>> {
         tools
             .into_iter()
-            .map(|t| Arc::new(ProtectedToolDyn::new(t, self.access_control.clone())) as Arc<dyn Tool>)
+            .map(|t| {
+                let protected = match &self.audit_sink {
+                    Some(sink) => ProtectedToolDyn::with_audit(t, self.access_control.clone(), sink.clone()),
+                    None => ProtectedToolDyn::new(t, self.access_control.clone()),
+                };
+                Arc::new(protected) as Arc<dyn Tool>
+            })
             .collect()
     }
 }
@@ -129,6 +182,7 @@ impl AuthMiddleware {
 pub struct ProtectedToolDyn {
     inner: Arc<dyn Tool>,
     access_control: Arc<AccessControl>,
+    audit_sink: Option<Arc<dyn AuditSink>>,
 }
 
 impl ProtectedToolDyn {
@@ -137,6 +191,20 @@ impl ProtectedToolDyn {
         Self {
             inner: tool,
             access_control,
+            audit_sink: None,
+        }
+    }
+
+    /// Create a new protected dynamic tool with audit logging.
+    pub fn with_audit(
+        tool: Arc<dyn Tool>,
+        access_control: Arc<AccessControl>,
+        audit_sink: Arc<dyn AuditSink>,
+    ) -> Self {
+        Self {
+            inner: tool,
+            access_control,
+            audit_sink: Some(audit_sink),
         }
     }
 }
@@ -169,12 +237,28 @@ impl Tool for ProtectedToolDyn {
 
     async fn execute(&self, ctx: Arc<dyn ToolContext>, args: Value) -> Result<Value> {
         let user_id = ctx.user_id();
-        let permission = Permission::Tool(self.name().to_string());
+        let tool_name = self.name();
+        let permission = Permission::Tool(tool_name.to_string());
 
         // Check permission
-        self.access_control
-            .check(user_id, &permission)
-            .map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
+        let check_result = self.access_control.check(user_id, &permission);
+
+        // Log audit event if sink is configured
+        if let Some(sink) = &self.audit_sink {
+            let outcome = if check_result.is_ok() {
+                AuditOutcome::Allowed
+            } else {
+                AuditOutcome::Denied
+            };
+            let event = AuditEvent::tool_access(user_id, tool_name, outcome)
+                .with_session(ctx.session_id());
+            
+            // Log asynchronously (don't block on audit failure)
+            let _ = sink.log(event).await;
+        }
+
+        // Return error if access denied
+        check_result.map_err(|e| adk_core::AdkError::Tool(e.to_string()))?;
 
         // Execute the tool
         self.inner.execute(ctx, args).await
