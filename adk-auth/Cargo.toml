@@ -1,0 +1,26 @@
+[package]
+name = "adk-auth"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Access control and authentication for Rust Agent Development Kit (ADK-Rust)"
+repository = "https://github.com/zavora-ai/adk-rust"
+documentation = "https://docs.rs/adk-auth"
+keywords = ["ai", "agent", "adk", "auth", "security"]
+categories = ["authentication", "api-bindings"]
+readme = "README.md"
+
+[dependencies]
+adk-core.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

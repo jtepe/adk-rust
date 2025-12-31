@@ -40,6 +40,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "adk-auth"
+version = "0.1.8"
+dependencies = [
+ "adk-core",
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "adk-browser"
 version = "0.1.8"
 dependencies = [

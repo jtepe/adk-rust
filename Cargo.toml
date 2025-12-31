@@ -19,6 +19,7 @@ members = [
     "adk-ui",
     "adk-telemetry",
     "adk-guardrail",
+    "adk-auth",
     "adk-studio",
     "adk-rust",
     "adk-gemini",
