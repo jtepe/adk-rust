@@ -22,19 +22,19 @@ async fn main() -> Result<()> {
     // Create three agents with different roles
     let analyzer = LlmAgentBuilder::new("analyzer")
         .description("Analyzes topics")
-        .instruction("Analyze the given topic and identify 3-5 key points. Be concise.")
+        .instruction("You are the ANALYZER. Start with '[Analyzer]' then analyze the given topic and identify 3-5 key points. Be concise.")
         .model(Arc::new(OllamaModel::new(OllamaConfig::new(&model_name))?))
         .build()?;
 
     let expander = LlmAgentBuilder::new("expander")
         .description("Expands on analysis")
-        .instruction("Take the analysis and expand on each key point with one additional detail.")
+        .instruction("You are the EXPANDER. Start with '[Expander]' then take the analysis and expand on each key point with one additional detail.")
         .model(Arc::new(OllamaModel::new(OllamaConfig::new(&model_name))?))
         .build()?;
 
     let summarizer = LlmAgentBuilder::new("summarizer")
         .description("Summarizes content")
-        .instruction("Create a brief 2-3 sentence summary of the expanded analysis.")
+        .instruction("You are the SUMMARIZER. Start with '[Summarizer]' then create a brief 2-3 sentence summary of the expanded analysis.")
         .model(Arc::new(OllamaModel::new(OllamaConfig::new(&model_name))?))
         .build()?;
 

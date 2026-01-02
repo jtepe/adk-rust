@@ -132,6 +132,27 @@ where
         let names: Vec<String> = tool_names.iter().map(|s| s.to_string()).collect();
         self.with_filter(move |name| names.iter().any(|n| n == name))
     }
+
+    /// Get a cancellation token that can be used to shutdown the MCP server.
+    ///
+    /// Call `cancel()` on the returned token to cleanly shutdown the MCP server.
+    /// This should be called before exiting to avoid EPIPE errors.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let toolset = McpToolset::new(client);
+    /// let cancel_token = toolset.cancellation_token().await;
+    /// 
+    /// // ... use the toolset ...
+    /// 
+    /// // Before exiting:
+    /// cancel_token.cancel();
+    /// ```
+    pub async fn cancellation_token(&self) -> rmcp::service::RunningServiceCancellationToken {
+        let client = self.client.lock().await;
+        client.cancellation_token()
+    }
 }
 
 #[async_trait]

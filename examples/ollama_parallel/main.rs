@@ -22,19 +22,19 @@ async fn main() -> Result<()> {
     // Create three analysts with different perspectives
     let technical = LlmAgentBuilder::new("technical_analyst")
         .description("Technical perspective")
-        .instruction("Analyze the topic from a technical perspective in 2-3 sentences.")
+        .instruction("You are the TECHNICAL ANALYST. Start your response with '[Technical Analyst]' then analyze the topic from a technical/engineering perspective in 2-3 sentences.")
         .model(Arc::new(OllamaModel::new(OllamaConfig::new(&model_name))?))
         .build()?;
 
     let business = LlmAgentBuilder::new("business_analyst")
         .description("Business perspective")
-        .instruction("Analyze the topic from a business/market perspective in 2-3 sentences.")
+        .instruction("You are the BUSINESS ANALYST. Start your response with '[Business Analyst]' then analyze the topic from a business/market perspective in 2-3 sentences.")
         .model(Arc::new(OllamaModel::new(OllamaConfig::new(&model_name))?))
         .build()?;
 
     let user_exp = LlmAgentBuilder::new("ux_analyst")
         .description("User experience perspective")
-        .instruction("Analyze the topic from a user experience perspective in 2-3 sentences.")
+        .instruction("You are the UX ANALYST. Start your response with '[UX Analyst]' then analyze the topic from a user experience perspective in 2-3 sentences.")
         .model(Arc::new(OllamaModel::new(OllamaConfig::new(&model_name))?))
         .build()?;
 

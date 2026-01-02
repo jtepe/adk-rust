@@ -35,10 +35,17 @@ async fn main() -> anyhow::Result<()> {
             .description("Routes tasks to specialists")
             .model(model.clone())
             .instruction(
-                "You are a task supervisor. Based on the task and work done, \
-                decide which specialist should work next.\n\n\
-                Available: researcher, writer, coder\n\n\
-                Respond with ONLY one word: 'researcher', 'writer', 'coder', or 'done'.",
+                "You are a task supervisor coordinating a team. You MUST use ALL specialists before finishing.\n\n\
+                Available specialists:\n\
+                - researcher: Gathers information (use FIRST)\n\
+                - writer: Writes content based on research (use SECOND)\n\
+                - coder: Writes code examples (use THIRD)\n\n\
+                Rules:\n\
+                1. If 'researcher' not in Completed list, respond: researcher\n\
+                2. If 'writer' not in Completed list, respond: writer\n\
+                3. If 'coder' not in Completed list, respond: coder\n\
+                4. Only if ALL THREE are completed, respond: done\n\n\
+                Respond with ONLY ONE WORD: researcher, writer, coder, or done",
             )
             .build()?,
     );
@@ -84,29 +91,34 @@ async fn main() -> anyhow::Result<()> {
         })
         .with_output_mapper(|events| {
             let mut updates = std::collections::HashMap::new();
+            
+            // Accumulate all text from all events
+            let mut full_text = String::new();
             for event in events {
                 if let Some(content) = event.content() {
-                    let text: String = content
-                        .parts
-                        .iter()
-                        .filter_map(|p| p.text())
-                        .collect::<Vec<_>>()
-                        .join("")
-                        .to_lowercase();
-
-                    let next = if text.contains("researcher") {
-                        "researcher"
-                    } else if text.contains("writer") {
-                        "writer"
-                    } else if text.contains("coder") {
-                        "coder"
-                    } else {
-                        "done"
-                    };
-
-                    updates.insert("next_agent".to_string(), json!(next));
+                    for part in &content.parts {
+                        if let Some(text) = part.text() {
+                            full_text.push_str(text);
+                        }
+                    }
                 }
             }
+            
+            let text = full_text.to_lowercase();
+            println!("[supervisor] full response: {:?}", text);
+
+            let next = if text.contains("researcher") {
+                "researcher"
+            } else if text.contains("writer") {
+                "writer"
+            } else if text.contains("coder") {
+                "coder"
+            } else {
+                "done"
+            };
+
+            println!("[supervisor] routing to: {}", next);
+            updates.insert("next_agent".to_string(), json!(next));
             updates
         });
 
@@ -117,14 +129,19 @@ async fn main() -> anyhow::Result<()> {
         })
         .with_output_mapper(|events| {
             let mut updates = std::collections::HashMap::new();
+            let mut full_text = String::new();
             for event in events {
                 if let Some(content) = event.content() {
-                    let text: String =
-                        content.parts.iter().filter_map(|p| p.text()).collect::<Vec<_>>().join("");
-                    if !text.is_empty() {
-                        updates.insert("research".to_string(), json!(text));
+                    for part in &content.parts {
+                        if let Some(text) = part.text() {
+                            full_text.push_str(text);
+                        }
                     }
                 }
+            }
+            println!("[researcher] output: {} chars", full_text.len());
+            if !full_text.is_empty() {
+                updates.insert("research".to_string(), json!(full_text));
             }
             updates
         });
@@ -138,14 +155,19 @@ async fn main() -> anyhow::Result<()> {
         })
         .with_output_mapper(|events| {
             let mut updates = std::collections::HashMap::new();
+            let mut full_text = String::new();
             for event in events {
                 if let Some(content) = event.content() {
-                    let text: String =
-                        content.parts.iter().filter_map(|p| p.text()).collect::<Vec<_>>().join("");
-                    if !text.is_empty() {
-                        updates.insert("content".to_string(), json!(text));
+                    for part in &content.parts {
+                        if let Some(text) = part.text() {
+                            full_text.push_str(text);
+                        }
                     }
                 }
+            }
+            println!("[writer] output: {} chars", full_text.len());
+            if !full_text.is_empty() {
+                updates.insert("content".to_string(), json!(full_text));
             }
             updates
         });
@@ -157,14 +179,19 @@ async fn main() -> anyhow::Result<()> {
         })
         .with_output_mapper(|events| {
             let mut updates = std::collections::HashMap::new();
+            let mut full_text = String::new();
             for event in events {
                 if let Some(content) = event.content() {
-                    let text: String =
-                        content.parts.iter().filter_map(|p| p.text()).collect::<Vec<_>>().join("");
-                    if !text.is_empty() {
-                        updates.insert("code".to_string(), json!(text));
+                    for part in &content.parts {
+                        if let Some(text) = part.text() {
+                            full_text.push_str(text);
+                        }
                     }
                 }
+            }
+            println!("[coder] output: {} chars", full_text.len());
+            if !full_text.is_empty() {
+                updates.insert("code".to_string(), json!(full_text));
             }
             updates
         });
