@@ -38,7 +38,8 @@ impl OidcProvider {
         client_id: impl Into<String>,
     ) -> Result<Self, TokenError> {
         let issuer = issuer_url.into();
-        let discovery_url = format!("{}/.well-known/openid-configuration", issuer.trim_end_matches('/'));
+        let discovery_url =
+            format!("{}/.well-known/openid-configuration", issuer.trim_end_matches('/'));
 
         let client = reqwest::Client::new();
         let response = client
@@ -48,10 +49,8 @@ impl OidcProvider {
             .error_for_status()
             .map_err(|e| TokenError::DiscoveryError(e.to_string()))?;
 
-        let config: OidcConfig = response
-            .json()
-            .await
-            .map_err(|e| TokenError::DiscoveryError(e.to_string()))?;
+        let config: OidcConfig =
+            response.json().await.map_err(|e| TokenError::DiscoveryError(e.to_string()))?;
 
         Ok(Self {
             issuer: config.issuer,
@@ -73,16 +72,14 @@ impl TokenValidator for OidcProvider {
     async fn validate(&self, token: &str) -> Result<TokenClaims, TokenError> {
         // Decode header to get key ID
         let header = jsonwebtoken::decode_header(token)?;
-        let kid = header
-            .kid
-            .ok_or_else(|| TokenError::MissingClaim("kid".into()))?;
+        let kid = header.kid.ok_or_else(|| TokenError::MissingClaim("kid".into()))?;
 
         // Get decoding key from JWKS cache
         let key = self.jwks_cache.get_key(&kid).await?;
 
         // Build validation
         let mut validation = jsonwebtoken::Validation::new(
-            self.algorithms.first().copied().unwrap_or(jsonwebtoken::Algorithm::RS256)
+            self.algorithms.first().copied().unwrap_or(jsonwebtoken::Algorithm::RS256),
         );
         validation.set_issuer(&[&self.issuer]);
         validation.set_audience(&[&self.client_id]);

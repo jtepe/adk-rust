@@ -20,11 +20,7 @@ pub struct Role {
 impl Role {
     /// Create a new role with the given name.
     pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            allowed: HashSet::new(),
-            denied: HashSet::new(),
-        }
+        Self { name: name.into(), allowed: HashSet::new(), denied: HashSet::new() }
     }
 
     /// Allow a permission for this role.
@@ -104,9 +100,7 @@ mod tests {
 
     #[test]
     fn test_admin_role() {
-        let admin = Role::new("admin")
-            .allow(Permission::AllTools)
-            .allow(Permission::AllAgents);
+        let admin = Role::new("admin").allow(Permission::AllTools).allow(Permission::AllAgents);
 
         assert!(admin.can_access(&Permission::Tool("anything".into())));
         assert!(admin.can_access(&Permission::Agent("any_agent".into())));

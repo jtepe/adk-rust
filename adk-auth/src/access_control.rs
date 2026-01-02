@@ -51,25 +51,13 @@ impl AccessControl {
 
         // Log to audit sink if configured
         if let Some(audit) = &self.audit {
-            let outcome = if result.is_ok() {
-                AuditOutcome::Allowed
-            } else {
-                AuditOutcome::Denied
-            };
+            let outcome = if result.is_ok() { AuditOutcome::Allowed } else { AuditOutcome::Denied };
 
             let event = match permission {
-                Permission::Tool(name) => {
-                    AuditEvent::tool_access(user, name.as_str(), outcome)
-                }
-                Permission::AllTools => {
-                    AuditEvent::tool_access(user, "*", outcome)
-                }
-                Permission::Agent(name) => {
-                    AuditEvent::agent_access(user, name.as_str(), outcome)
-                }
-                Permission::AllAgents => {
-                    AuditEvent::agent_access(user, "*", outcome)
-                }
+                Permission::Tool(name) => AuditEvent::tool_access(user, name.as_str(), outcome),
+                Permission::AllTools => AuditEvent::tool_access(user, "*", outcome),
+                Permission::Agent(name) => AuditEvent::agent_access(user, name.as_str(), outcome),
+                Permission::AllAgents => AuditEvent::agent_access(user, "*", outcome),
             };
 
             audit.log(event).await?;
@@ -82,12 +70,7 @@ impl AccessControl {
     pub fn user_roles(&self, user: &str) -> Vec<&Role> {
         self.user_roles
             .get(user)
-            .map(|names| {
-                names
-                    .iter()
-                    .filter_map(|name| self.roles.get(name))
-                    .collect()
-            })
+            .map(|names| names.iter().filter_map(|name| self.roles.get(name)).collect())
             .unwrap_or_default()
     }
 
@@ -119,10 +102,7 @@ impl AccessControlBuilder {
 
     /// Assign a role to a user.
     pub fn assign(mut self, user: impl Into<String>, role: impl Into<String>) -> Self {
-        self.user_roles
-            .entry(user.into())
-            .or_default()
-            .push(role.into());
+        self.user_roles.entry(user.into()).or_default().push(role.into());
         self
     }
 
@@ -146,11 +126,7 @@ impl AccessControlBuilder {
             }
         }
 
-        Ok(AccessControl {
-            roles: self.roles,
-            user_roles: self.user_roles,
-            audit: self.audit,
-        })
+        Ok(AccessControl { roles: self.roles, user_roles: self.user_roles, audit: self.audit })
     }
 }
 
@@ -159,9 +135,7 @@ mod tests {
     use super::*;
 
     fn setup_ac() -> AccessControl {
-        let admin = Role::new("admin")
-            .allow(Permission::AllTools)
-            .allow(Permission::AllAgents);
+        let admin = Role::new("admin").allow(Permission::AllTools).allow(Permission::AllAgents);
 
         let user = Role::new("user")
             .allow(Permission::Tool("search".into()))
@@ -213,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_multi_role_user() {
-        let roles = vec![
+        let roles = [
             Role::new("reader").allow(Permission::Tool("read".into())),
             Role::new("writer").allow(Permission::Tool("write".into())),
         ];

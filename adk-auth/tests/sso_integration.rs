@@ -30,11 +30,7 @@ fn test_token_claims_user_id() {
     // Prefers email over sub
     assert_eq!(claims.user_id(), "alice@example.com");
 
-    let claims_no_email = TokenClaims {
-        sub: "user-123".into(),
-        email: None,
-        ..Default::default()
-    };
+    let claims_no_email = TokenClaims { sub: "user-123".into(), email: None, ..Default::default() };
     assert_eq!(claims_no_email.user_id(), "user-123");
 }
 
@@ -74,15 +70,10 @@ fn test_token_claims_expiry() {
 
 #[test]
 fn test_claims_mapper_group_to_role() {
-    let mapper = ClaimsMapper::builder()
-        .map_group("AdminGroup", "admin")
-        .map_group("Users", "user")
-        .build();
+    let mapper =
+        ClaimsMapper::builder().map_group("AdminGroup", "admin").map_group("Users", "user").build();
 
-    let claims = TokenClaims {
-        groups: vec!["AdminGroup".into()],
-        ..Default::default()
-    };
+    let claims = TokenClaims { groups: vec!["AdminGroup".into()], ..Default::default() };
 
     let roles = mapper.map_to_roles(&claims);
     assert_eq!(roles, vec!["admin"]);
@@ -90,15 +81,11 @@ fn test_claims_mapper_group_to_role() {
 
 #[test]
 fn test_claims_mapper_multiple_groups() {
-    let mapper = ClaimsMapper::builder()
-        .map_group("Group1", "role1")
-        .map_group("Group2", "role2")
-        .build();
+    let mapper =
+        ClaimsMapper::builder().map_group("Group1", "role1").map_group("Group2", "role2").build();
 
-    let claims = TokenClaims {
-        groups: vec!["Group1".into(), "Group2".into()],
-        ..Default::default()
-    };
+    let claims =
+        TokenClaims { groups: vec!["Group1".into(), "Group2".into()], ..Default::default() };
 
     let roles = mapper.map_to_roles(&claims);
     assert!(roles.contains(&"role1".to_string()));
@@ -107,16 +94,10 @@ fn test_claims_mapper_multiple_groups() {
 
 #[test]
 fn test_claims_mapper_default_role() {
-    let mapper = ClaimsMapper::builder()
-        .map_group("Admin", "admin")
-        .default_role("guest")
-        .build();
+    let mapper = ClaimsMapper::builder().map_group("Admin", "admin").default_role("guest").build();
 
     // No matching groups - should get default
-    let claims = TokenClaims {
-        groups: vec!["Unknown".into()],
-        ..Default::default()
-    };
+    let claims = TokenClaims { groups: vec!["Unknown".into()], ..Default::default() };
 
     let roles = mapper.map_to_roles(&claims);
     assert_eq!(roles, vec!["guest"]);
@@ -150,9 +131,7 @@ fn test_claims_mapper_user_id_from_sub() {
 
 #[test]
 fn test_claims_mapper_user_id_from_preferred_username() {
-    let mapper = ClaimsMapper::builder()
-        .user_id_from_preferred_username()
-        .build();
+    let mapper = ClaimsMapper::builder().user_id_from_preferred_username().build();
 
     let claims = TokenClaims {
         sub: "user-123".into(),
@@ -191,33 +170,21 @@ fn test_oidc_provider_manual_construction() {
 fn test_sso_access_control_builder() {
     let role = Role::new("user").allow(Permission::Tool("search".into()));
 
-    let ac = AccessControl::builder()
-        .role(role)
-        .build()
-        .unwrap();
+    let ac = AccessControl::builder().role(role).build().unwrap();
 
-    let mapper = ClaimsMapper::builder()
-        .map_group("Users", "user")
-        .default_role("guest")
-        .build();
+    let mapper = ClaimsMapper::builder().map_group("Users", "user").default_role("guest").build();
 
     let provider = GoogleProvider::new("test-client-id");
 
-    let result = SsoAccessControl::builder()
-        .validator(provider)
-        .mapper(mapper)
-        .access_control(ac)
-        .build();
+    let result =
+        SsoAccessControl::builder().validator(provider).mapper(mapper).access_control(ac).build();
 
     assert!(result.is_ok());
 }
 
 #[test]
 fn test_sso_access_control_missing_validator() {
-    let ac = AccessControl::builder()
-        .role(Role::new("user"))
-        .build()
-        .unwrap();
+    let ac = AccessControl::builder().role(Role::new("user")).build().unwrap();
 
     let result = SsoAccessControl::builder().access_control(ac).build();
 
@@ -240,10 +207,8 @@ fn test_sso_access_control_missing_access_control() {
 #[tokio::test]
 async fn test_google_oidc_discovery() {
     // This test requires network access to Google's OIDC endpoint
-    let result = OidcProvider::from_discovery(
-        "https://accounts.google.com",
-        "test-client-id",
-    ).await;
+    let result =
+        OidcProvider::from_discovery("https://accounts.google.com", "test-client-id").await;
 
     match result {
         Ok(provider) => {
@@ -270,12 +235,7 @@ fn test_complete_sso_flow_setup() {
     let viewer = Role::new("viewer").allow(Permission::Tool("view".into()));
 
     // Step 2: Build AccessControl
-    let ac = AccessControl::builder()
-        .role(admin)
-        .role(analyst)
-        .role(viewer)
-        .build()
-        .unwrap();
+    let ac = AccessControl::builder().role(admin).role(analyst).role(viewer).build().unwrap();
 
     // Step 3: Configure ClaimsMapper
     let mapper = ClaimsMapper::builder()

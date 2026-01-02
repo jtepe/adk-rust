@@ -17,8 +17,12 @@ struct AdminTool;
 
 #[async_trait]
 impl Tool for SearchTool {
-    fn name(&self) -> &str { "search" }
-    fn description(&self) -> &str { "Search the web" }
+    fn name(&self) -> &str {
+        "search"
+    }
+    fn description(&self) -> &str {
+        "Search the web"
+    }
     async fn execute(&self, _ctx: Arc<dyn ToolContext>, _args: Value) -> Result<Value> {
         Ok(serde_json::json!({"result": "Search results..."}))
     }
@@ -26,8 +30,12 @@ impl Tool for SearchTool {
 
 #[async_trait]
 impl Tool for CodeExecTool {
-    fn name(&self) -> &str { "code_exec" }
-    fn description(&self) -> &str { "Execute code (dangerous!)" }
+    fn name(&self) -> &str {
+        "code_exec"
+    }
+    fn description(&self) -> &str {
+        "Execute code (dangerous!)"
+    }
     async fn execute(&self, _ctx: Arc<dyn ToolContext>, _args: Value) -> Result<Value> {
         Ok(serde_json::json!({"result": "Code executed"}))
     }
@@ -35,8 +43,12 @@ impl Tool for CodeExecTool {
 
 #[async_trait]
 impl Tool for AdminTool {
-    fn name(&self) -> &str { "admin_panel" }
-    fn description(&self) -> &str { "Admin operations" }
+    fn name(&self) -> &str {
+        "admin_panel"
+    }
+    fn description(&self) -> &str {
+        "Admin operations"
+    }
     async fn execute(&self, _ctx: Arc<dyn ToolContext>, _args: Value) -> Result<Value> {
         Ok(serde_json::json!({"result": "Admin action completed"}))
     }
@@ -47,9 +59,7 @@ fn main() -> anyhow::Result<()> {
     println!("======================\n");
 
     // Define roles
-    let admin = Role::new("admin")
-        .allow(Permission::AllTools)
-        .allow(Permission::AllAgents);
+    let admin = Role::new("admin").allow(Permission::AllTools).allow(Permission::AllAgents);
 
     let analyst = Role::new("analyst")
         .allow(Permission::Tool("search".into()))
@@ -101,11 +111,8 @@ fn main() -> anyhow::Result<()> {
 
     // Create middleware to protect tools
     let middleware = AuthMiddleware::new(ac);
-    let tools: Vec<Arc<dyn Tool>> = vec![
-        Arc::new(SearchTool),
-        Arc::new(CodeExecTool),
-        Arc::new(AdminTool),
-    ];
+    let tools: Vec<Arc<dyn Tool>> =
+        vec![Arc::new(SearchTool), Arc::new(CodeExecTool), Arc::new(AdminTool)];
 
     let protected_tools = middleware.protect_all(tools);
     println!("Protected {} tools with access control", protected_tools.len());

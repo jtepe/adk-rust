@@ -71,10 +71,8 @@ impl JwksCache {
 
     /// Refresh the JWKS cache.
     pub async fn refresh(&self) -> Result<(), TokenError> {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
         let last = self.last_refresh.load(Ordering::Relaxed);
         let interval_secs = self.refresh_interval.as_secs();
@@ -94,10 +92,8 @@ impl JwksCache {
             .error_for_status()
             .map_err(|e| TokenError::JwksFetchError(e.to_string()))?;
 
-        let jwks: Jwks = response
-            .json()
-            .await
-            .map_err(|e| TokenError::JwksParseError(e.to_string()))?;
+        let jwks: Jwks =
+            response.json().await.map_err(|e| TokenError::JwksParseError(e.to_string()))?;
 
         // Clear old keys and add new ones
         self.keys.clear();

@@ -38,4 +38,4 @@ mod config;
 mod convert;
 
 pub use client::GroqClient;
-pub use config::{GroqConfig, GROQ_API_BASE};
+pub use config::{GROQ_API_BASE, GroqConfig};

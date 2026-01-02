@@ -33,12 +33,8 @@ async fn main() -> anyhow::Result<()> {
         .build()?;
 
     // Run agent in console mode
-    adk_cli::console::run_console(
-        Arc::new(agent),
-        "ollama_basic".to_string(),
-        "user1".to_string(),
-    )
-    .await?;
+    adk_cli::console::run_console(Arc::new(agent), "ollama_basic".to_string(), "user1".to_string())
+        .await?;
 
     Ok(())
 }

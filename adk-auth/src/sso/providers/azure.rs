@@ -24,14 +24,9 @@ impl AzureADProvider {
     #[cfg(feature = "sso")]
     pub fn new(tenant_id: impl Into<String>, client_id: impl Into<String>) -> Self {
         let tenant_id = tenant_id.into();
-        let issuer = format!(
-            "https://login.microsoftonline.com/{}/v2.0",
-            tenant_id
-        );
-        let jwks_uri = format!(
-            "https://login.microsoftonline.com/{}/discovery/v2.0/keys",
-            tenant_id
-        );
+        let issuer = format!("https://login.microsoftonline.com/{}/v2.0", tenant_id);
+        let jwks_uri =
+            format!("https://login.microsoftonline.com/{}/discovery/v2.0/keys", tenant_id);
 
         Self {
             tenant_id,
@@ -72,16 +67,14 @@ impl TokenValidator for AzureADProvider {
     async fn validate(&self, token: &str) -> Result<TokenClaims, TokenError> {
         // Decode header to get key ID
         let header = jsonwebtoken::decode_header(token)?;
-        let kid = header
-            .kid
-            .ok_or_else(|| TokenError::MissingClaim("kid".into()))?;
+        let kid = header.kid.ok_or_else(|| TokenError::MissingClaim("kid".into()))?;
 
         // Get decoding key from JWKS cache
         let key = self.jwks_cache.get_key(&kid).await?;
 
         // Build validation
         let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
-        
+
         // For multi-tenant, skip issuer validation (validate manually if needed)
         if self.tenant_id != "common" {
             validation.set_issuer(&[&self.issuer]);
@@ -105,10 +98,6 @@ impl TokenValidator for AzureADProvider {
 #[cfg(not(feature = "sso"))]
 impl AzureADProvider {
     pub fn new(tenant_id: impl Into<String>, client_id: impl Into<String>) -> Self {
-        Self {
-            tenant_id: tenant_id.into(),
-            client_id: client_id.into(),
-            issuer: String::new(),
-        }
+        Self { tenant_id: tenant_id.into(), client_id: client_id.into(), issuer: String::new() }
     }
 }

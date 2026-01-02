@@ -17,12 +17,12 @@ fn main() -> anyhow::Result<()> {
     // ==========================================================
     println!("1. Building a JWT Validator:");
     println!();
-    
+
     // The validator requires:
     // - issuer: Expected token issuer (iss claim)
     // - jwks_uri: URL to fetch public keys
     // - audience: Optional expected audience (aud claim)
-    
+
     println!("   JwtValidator::builder()");
     println!("       .issuer(\"https://example.auth0.com/\")");
     println!("       .jwks_uri(\"https://example.auth0.com/.well-known/jwks.json\")");
@@ -37,7 +37,7 @@ fn main() -> anyhow::Result<()> {
         .jwks_uri("https://example.auth0.com/.well-known/jwks.json")
         .audience("api://my-app")
         .build();
-    
+
     match validator_result {
         Ok(_) => println!("   ✅ Validator built successfully"),
         Err(e) => println!("   ⚠️  Build result: {:?}", e),
@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
     // ==========================================================
     println!("2. TokenClaims structure:");
     println!();
-    
+
     let claims = TokenClaims {
         sub: "user-12345".into(),
         iss: "https://accounts.google.com".into(),
@@ -60,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         iat: 1735696400,
         ..Default::default()
     };
-    
+
     println!("   sub: {}", claims.sub);
     println!("   iss: {}", claims.iss);
     println!("   email: {:?}", claims.email);
@@ -68,7 +68,7 @@ fn main() -> anyhow::Result<()> {
     println!("   groups: {:?}", claims.groups);
     println!("   exp: {} (Unix timestamp)", claims.exp);
     println!();
-    
+
     // Helper methods
     println!("   Helper methods:");
     println!("   - user_id(): {}", claims.user_id());
@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
     // ==========================================================
     println!("3. TokenError variants:");
     println!();
-    
+
     let errors: Vec<TokenError> = vec![
         TokenError::Expired,
         TokenError::InvalidSignature,
@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
         TokenError::MissingClaim("email".into()),
         TokenError::KeyNotFound("key-123".into()),
     ];
-    
+
     for err in errors {
         println!("   - {}", err);
     }

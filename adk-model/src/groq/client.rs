@@ -1,6 +1,6 @@
 //! Groq client implementation.
 
-use super::config::{GroqConfig, GROQ_API_BASE};
+use super::config::{GROQ_API_BASE, GroqConfig};
 use super::convert::{self, ChatCompletionRequest, ChatCompletionResponse};
 use adk_core::{AdkError, FinishReason, Llm, LlmRequest, LlmResponse, LlmResponseStream, Part};
 use async_stream::try_stream;

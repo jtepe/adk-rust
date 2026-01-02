@@ -15,10 +15,7 @@ pub struct AccessDenied {
 impl AccessDenied {
     /// Create a new access denied error.
     pub fn new(user: impl Into<String>, permission: impl Into<String>) -> Self {
-        Self {
-            user: user.into(),
-            permission: permission.into(),
-        }
+        Self { user: user.into(), permission: permission.into() }
     }
 }
 

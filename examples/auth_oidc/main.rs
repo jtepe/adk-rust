@@ -16,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
     // ==========================================================
     println!("1. OIDC Discovery URLs:");
     println!();
-    
+
     let providers = [
         ("Google", "https://accounts.google.com"),
         ("Microsoft", "https://login.microsoftonline.com/common/v2.0"),
@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
         ("Auth0", "https://your-tenant.auth0.com"),
         ("Keycloak", "https://keycloak.example.com/realms/main"),
     ];
-    
+
     for (name, issuer) in providers {
         println!("   {}: {}/.well-known/openid-configuration", name, issuer);
     }
@@ -35,18 +35,18 @@ async fn main() -> anyhow::Result<()> {
     // ==========================================================
     println!("2. Manual OIDC configuration:");
     println!();
-    
+
     // When you know the endpoints
     let _provider = OidcProvider::new(
         "https://accounts.google.com",
         "your-client-id",
         "https://www.googleapis.com/oauth2/v3/certs",
     );
-    
+
     println!("   OidcProvider::new(");
     println!("       issuer,");
     println!("       client_id,");
-    println!("       jwks_uri,");   
+    println!("       jwks_uri,");
     println!("   )");
     println!();
 
@@ -55,20 +55,17 @@ async fn main() -> anyhow::Result<()> {
     // ==========================================================
     println!("3. OIDC auto-discovery:");
     println!();
-    
+
     println!("   // Fetches .well-known/openid-configuration automatically");
     println!("   let provider = OidcProvider::from_discovery(");
     println!("       \"https://accounts.google.com\",");
     println!("       \"your-client-id\",");
     println!("   ).await?;");
     println!();
-    
+
     // Try Google's real OIDC endpoint
     println!("   Attempting Google OIDC discovery...");
-    match OidcProvider::from_discovery(
-        "https://accounts.google.com",
-        "example-client-id",
-    ).await {
+    match OidcProvider::from_discovery("https://accounts.google.com", "example-client-id").await {
         Ok(provider) => {
             println!("   ✅ Discovery successful!");
             println!("   Issuer: {}", provider.issuer());
@@ -98,7 +95,8 @@ async fn main() -> anyhow::Result<()> {
     // Usage Pattern
     // ==========================================================
     println!("5. Usage pattern:");
-    println!(r#"
+    println!(
+        r#"
    // At startup: discover and cache provider
    let provider = OidcProvider::from_discovery(
        "https://your-idp.com",
@@ -111,7 +109,8 @@ async fn main() -> anyhow::Result<()> {
    // Use claims
    let user_email = claims.email.unwrap_or(claims.sub);
    let is_admin = claims.groups.contains(&"admin".to_string());
-"#);
+"#
+    );
 
     Ok(())
 }

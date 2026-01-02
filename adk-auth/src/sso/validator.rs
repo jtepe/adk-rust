@@ -54,9 +54,7 @@ impl TokenValidator for JwtValidator {
     async fn validate(&self, token: &str) -> Result<TokenClaims, TokenError> {
         // Decode header to get key ID
         let header = jsonwebtoken::decode_header(token)?;
-        let kid = header
-            .kid
-            .ok_or_else(|| TokenError::MissingClaim("kid".into()))?;
+        let kid = header.kid.ok_or_else(|| TokenError::MissingClaim("kid".into()))?;
 
         // Get decoding key from JWKS cache
         let key = self.jwks_cache.get_key(&kid).await?;
@@ -111,9 +109,8 @@ impl JwtValidatorBuilder {
 
     /// Build the validator.
     pub fn build(self) -> Result<JwtValidator, TokenError> {
-        let issuer = self
-            .issuer
-            .ok_or_else(|| TokenError::ValidationError("issuer is required".into()))?;
+        let issuer =
+            self.issuer.ok_or_else(|| TokenError::ValidationError("issuer is required".into()))?;
         let jwks_uri = self
             .jwks_uri
             .ok_or_else(|| TokenError::ValidationError("jwks_uri is required".into()))?;
@@ -149,9 +146,15 @@ pub struct JwtValidatorBuilder;
 
 #[cfg(not(feature = "sso"))]
 impl JwtValidatorBuilder {
-    pub fn issuer(self, _: impl Into<String>) -> Self { self }
-    pub fn audience(self, _: impl Into<String>) -> Self { self }
-    pub fn jwks_uri(self, _: impl Into<String>) -> Self { self }
+    pub fn issuer(self, _: impl Into<String>) -> Self {
+        self
+    }
+    pub fn audience(self, _: impl Into<String>) -> Self {
+        self
+    }
+    pub fn jwks_uri(self, _: impl Into<String>) -> Self {
+        self
+    }
     pub fn build(self) -> Result<JwtValidator, TokenError> {
         Err(TokenError::ValidationError("SSO feature not enabled".into()))
     }

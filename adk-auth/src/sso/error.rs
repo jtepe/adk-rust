@@ -23,10 +23,7 @@ pub enum TokenError {
 
     /// Token audience doesn't match expected.
     #[error("Invalid audience: expected '{expected}', got '{actual:?}'")]
-    InvalidAudience {
-        expected: String,
-        actual: Vec<String>,
-    },
+    InvalidAudience { expected: String, actual: Vec<String> },
 
     /// Required claim is missing.
     #[error("Missing required claim: {0}")]
@@ -73,14 +70,12 @@ impl From<jsonwebtoken::errors::Error> for TokenError {
             ErrorKind::ExpiredSignature => TokenError::Expired,
             ErrorKind::ImmatureSignature => TokenError::NotYetValid,
             ErrorKind::InvalidSignature => TokenError::InvalidSignature,
-            ErrorKind::InvalidAudience => TokenError::InvalidAudience {
-                expected: "expected".into(),
-                actual: vec![],
-            },
-            ErrorKind::InvalidIssuer => TokenError::InvalidIssuer {
-                expected: "expected".into(),
-                actual: "actual".into(),
-            },
+            ErrorKind::InvalidAudience => {
+                TokenError::InvalidAudience { expected: "expected".into(), actual: vec![] }
+            }
+            ErrorKind::InvalidIssuer => {
+                TokenError::InvalidIssuer { expected: "expected".into(), actual: "actual".into() }
+            }
             _ => TokenError::DecodingError(err.to_string()),
         }
     }

@@ -5,8 +5,8 @@
 //! Run: cargo run --example auth_audit
 
 use adk_auth::{
-    AccessControl, AuditEvent, AuditOutcome, AuditSink, AuthError, AuthMiddleware,
-    FileAuditSink, Permission, Role,
+    AccessControl, AuditEvent, AuditOutcome, AuditSink, AuthError, AuthMiddleware, FileAuditSink,
+    Permission, Role,
 };
 use adk_core::{Result, Tool, ToolContext};
 use async_trait::async_trait;
@@ -20,9 +20,7 @@ struct MemoryAuditSink {
 
 impl MemoryAuditSink {
     fn new() -> Self {
-        Self {
-            events: Mutex::new(Vec::new()),
-        }
+        Self { events: Mutex::new(Vec::new()) }
     }
 
     fn events(&self) -> Vec<AuditEvent> {
@@ -59,8 +57,7 @@ fn main() -> anyhow::Result<()> {
     println!("==============================\n");
 
     // Define roles
-    let data_analyst = Role::new("data_analyst")
-        .allow(Permission::Tool("data_query".into()));
+    let data_analyst = Role::new("data_analyst").allow(Permission::Tool("data_query".into()));
 
     let guest = Role::new("guest"); // No permissions
 
@@ -100,11 +97,7 @@ fn main() -> anyhow::Result<()> {
     for (user, tool, expected) in checks {
         let perm = Permission::Tool(tool.into());
         let result = ac.check(user, &perm);
-        let outcome = if result.is_ok() {
-            AuditOutcome::Allowed
-        } else {
-            AuditOutcome::Denied
-        };
+        let outcome = if result.is_ok() { AuditOutcome::Allowed } else { AuditOutcome::Denied };
 
         // Create and log audit event
         let event = AuditEvent::tool_access(user, tool, outcome.clone());
@@ -142,10 +135,7 @@ fn main() -> anyhow::Result<()> {
     let events = memory_audit.events();
     println!("   Captured {} audit events:", events.len());
     for event in &events {
-        println!(
-            "     - {} -> {} ({:?})",
-            event.user, event.resource, event.outcome
-        );
+        println!("     - {} -> {} ({:?})", event.user, event.resource, event.outcome);
     }
     println!();
 

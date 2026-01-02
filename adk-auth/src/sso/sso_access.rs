@@ -53,11 +53,7 @@ impl SsoAccessControl {
 
         // Step 4: Audit log
         if let Some(sink) = &self.audit_sink {
-            let outcome = if result.is_ok() {
-                AuditOutcome::Allowed
-            } else {
-                AuditOutcome::Denied
-            };
+            let outcome = if result.is_ok() { AuditOutcome::Allowed } else { AuditOutcome::Denied };
             let event = AuditEvent::tool_access(&user_id, &permission.to_string(), outcome);
             let _ = sink.log(event).await;
         }

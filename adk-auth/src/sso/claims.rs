@@ -92,27 +92,19 @@ impl TokenClaims {
 
     /// Get all groups and roles combined.
     pub fn all_groups(&self) -> Vec<&str> {
-        self.groups
-            .iter()
-            .chain(self.roles.iter())
-            .map(|s| s.as_str())
-            .collect()
+        self.groups.iter().chain(self.roles.iter()).map(|s| s.as_str()).collect()
     }
 
     /// Check if token is expired.
     pub fn is_expired(&self) -> bool {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
         self.exp < now
     }
 
     /// Get a custom claim by key.
     pub fn get_custom<T: serde::de::DeserializeOwned>(&self, key: &str) -> Option<T> {
-        self.custom
-            .get(key)
-            .and_then(|v| serde_json::from_value(v.clone()).ok())
+        self.custom.get(key).and_then(|v| serde_json::from_value(v.clone()).ok())
     }
 }
 
@@ -146,40 +138,6 @@ impl Audience {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_token_claims_user_id() {
-        let claims = TokenClaims {
-            sub: "user-123".into(),
-            email: Some("alice@example.com".into()),
-            ..Default::default()
-        };
-        assert_eq!(claims.user_id(), "alice@example.com");
-
-        let claims_no_email = TokenClaims {
-            sub: "user-123".into(),
-            email: None,
-            ..Default::default()
-        };
-        assert_eq!(claims_no_email.user_id(), "user-123");
-    }
-
-    #[test]
-    fn test_audience_contains() {
-        let single = Audience::Single("client-1".into());
-        assert!(single.contains("client-1"));
-        assert!(!single.contains("client-2"));
-
-        let multiple = Audience::Multiple(vec!["client-1".into(), "client-2".into()]);
-        assert!(multiple.contains("client-1"));
-        assert!(multiple.contains("client-2"));
-        assert!(!multiple.contains("client-3"));
-    }
-}
-
 impl Default for TokenClaims {
     fn default() -> Self {
         Self {
@@ -203,5 +161,36 @@ impl Default for TokenClaims {
             hd: None,
             custom: HashMap::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_token_claims_user_id() {
+        let claims = TokenClaims {
+            sub: "user-123".into(),
+            email: Some("alice@example.com".into()),
+            ..Default::default()
+        };
+        assert_eq!(claims.user_id(), "alice@example.com");
+
+        let claims_no_email =
+            TokenClaims { sub: "user-123".into(), email: None, ..Default::default() };
+        assert_eq!(claims_no_email.user_id(), "user-123");
+    }
+
+    #[test]
+    fn test_audience_contains() {
+        let single = Audience::Single("client-1".into());
+        assert!(single.contains("client-1"));
+        assert!(!single.contains("client-2"));
+
+        let multiple = Audience::Multiple(vec!["client-1".into(), "client-2".into()]);
+        assert!(multiple.contains("client-1"));
+        assert!(multiple.contains("client-2"));
+        assert!(!multiple.contains("client-3"));
     }
 }

@@ -5,11 +5,11 @@ use super::convert;
 use adk_core::{AdkError, Llm, LlmRequest, LlmResponseStream, Result};
 use async_stream::try_stream;
 use async_trait::async_trait;
-use ollama_rs::generation::chat::request::ChatMessageRequest;
+use ollama_rs::Ollama;
 use ollama_rs::generation::chat::ChatMessage;
+use ollama_rs::generation::chat::request::ChatMessageRequest;
 use ollama_rs::generation::tools::{ToolFunctionInfo, ToolInfo, ToolType};
 use ollama_rs::models::ModelOptions;
-use ollama_rs::Ollama;
 use schemars::Schema;
 
 /// Ollama client for local LLM inference.
@@ -86,11 +86,7 @@ impl OllamaModel {
 
                 ToolInfo {
                     tool_type: ToolType::Function,
-                    function: ToolFunctionInfo {
-                        name: name.clone(),
-                        description,
-                        parameters,
-                    },
+                    function: ToolFunctionInfo { name: name.clone(), description, parameters },
                 }
             })
             .collect()

@@ -109,10 +109,7 @@ impl FileAuditSink {
     /// Create a new file audit sink.
     pub fn new(path: impl Into<PathBuf>) -> Result<Self, std::io::Error> {
         let path = path.into();
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        let file = OpenOptions::new().create(true).append(true).open(&path)?;
         let writer = Mutex::new(BufWriter::new(file));
         Ok(Self { writer, path })
     }

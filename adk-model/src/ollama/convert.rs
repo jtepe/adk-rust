@@ -58,18 +58,11 @@ pub fn chat_response_to_llm_response(response: &ChatMessageResponse, partial: bo
         });
     }
 
-    let content = if parts.is_empty() {
-        None
-    } else {
-        Some(Content { role: "model".to_string(), parts })
-    };
+    let content =
+        if parts.is_empty() { None } else { Some(Content { role: "model".to_string(), parts }) };
 
     // Determine finish reason
-    let finish_reason = if response.done {
-        Some(FinishReason::Stop)
-    } else {
-        None
-    };
+    let finish_reason = if response.done { Some(FinishReason::Stop) } else { None };
 
     // Extract usage metadata from final_data if available
     let usage_metadata = response.final_data.as_ref().map(|data| UsageMetadata {

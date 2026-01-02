@@ -50,13 +50,12 @@ impl ClaimsMapper {
         match &self.user_id_claim {
             UserIdClaim::Sub => claims.sub.clone(),
             UserIdClaim::Email => claims.email.clone().unwrap_or_else(|| claims.sub.clone()),
-            UserIdClaim::PreferredUsername => claims
-                .preferred_username
-                .clone()
-                .unwrap_or_else(|| claims.sub.clone()),
-            UserIdClaim::Custom(key) => claims
-                .get_custom::<String>(key)
-                .unwrap_or_else(|| claims.sub.clone()),
+            UserIdClaim::PreferredUsername => {
+                claims.preferred_username.clone().unwrap_or_else(|| claims.sub.clone())
+            }
+            UserIdClaim::Custom(key) => {
+                claims.get_custom::<String>(key).unwrap_or_else(|| claims.sub.clone())
+            }
         }
     }
 

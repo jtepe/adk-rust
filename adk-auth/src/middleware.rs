@@ -35,20 +35,16 @@ pub struct ProtectedTool<T: Tool> {
 impl<T: Tool> ProtectedTool<T> {
     /// Create a new protected tool.
     pub fn new(tool: T, access_control: Arc<AccessControl>) -> Self {
-        Self {
-            inner: tool,
-            access_control,
-            audit_sink: None,
-        }
+        Self { inner: tool, access_control, audit_sink: None }
     }
 
     /// Create a new protected tool with audit logging.
-    pub fn with_audit(tool: T, access_control: Arc<AccessControl>, audit_sink: Arc<dyn AuditSink>) -> Self {
-        Self {
-            inner: tool,
-            access_control,
-            audit_sink: Some(audit_sink),
-        }
+    pub fn with_audit(
+        tool: T,
+        access_control: Arc<AccessControl>,
+        audit_sink: Arc<dyn AuditSink>,
+    ) -> Self {
+        Self { inner: tool, access_control, audit_sink: Some(audit_sink) }
     }
 }
 
@@ -88,14 +84,11 @@ impl<T: Tool + Send + Sync> Tool for ProtectedTool<T> {
 
         // Log audit event if sink is configured
         if let Some(sink) = &self.audit_sink {
-            let outcome = if check_result.is_ok() {
-                AuditOutcome::Allowed
-            } else {
-                AuditOutcome::Denied
-            };
-            let event = AuditEvent::tool_access(user_id, tool_name, outcome)
-                .with_session(ctx.session_id());
-            
+            let outcome =
+                if check_result.is_ok() { AuditOutcome::Allowed } else { AuditOutcome::Denied };
+            let event =
+                AuditEvent::tool_access(user_id, tool_name, outcome).with_session(ctx.session_id());
+
             // Log asynchronously (don't block on audit failure)
             let _ = sink.log(event).await;
         }
@@ -136,18 +129,12 @@ pub struct AuthMiddleware {
 impl AuthMiddleware {
     /// Create a new auth middleware.
     pub fn new(access_control: AccessControl) -> Self {
-        Self {
-            access_control: Arc::new(access_control),
-            audit_sink: None,
-        }
+        Self { access_control: Arc::new(access_control), audit_sink: None }
     }
 
     /// Create a new auth middleware with audit logging.
     pub fn with_audit(access_control: AccessControl, audit_sink: impl AuditSink + 'static) -> Self {
-        Self {
-            access_control: Arc::new(access_control),
-            audit_sink: Some(Arc::new(audit_sink)),
-        }
+        Self { access_control: Arc::new(access_control), audit_sink: Some(Arc::new(audit_sink)) }
     }
 
     /// Get a reference to the access control.
@@ -158,7 +145,9 @@ impl AuthMiddleware {
     /// Wrap a tool with access control.
     pub fn protect<T: Tool>(&self, tool: T) -> ProtectedTool<T> {
         match &self.audit_sink {
-            Some(sink) => ProtectedTool::with_audit(tool, self.access_control.clone(), sink.clone()),
+            Some(sink) => {
+                ProtectedTool::with_audit(tool, self.access_control.clone(), sink.clone())
+            }
             None => ProtectedTool::new(tool, self.access_control.clone()),
         }
     }
@@ -169,7 +158,9 @@ impl AuthMiddleware {
             .into_iter()
             .map(|t| {
                 let protected = match &self.audit_sink {
-                    Some(sink) => ProtectedToolDyn::with_audit(t, self.access_control.clone(), sink.clone()),
+                    Some(sink) => {
+                        ProtectedToolDyn::with_audit(t, self.access_control.clone(), sink.clone())
+                    }
                     None => ProtectedToolDyn::new(t, self.access_control.clone()),
                 };
                 Arc::new(protected) as Arc<dyn Tool>
@@ -188,11 +179,7 @@ pub struct ProtectedToolDyn {
 impl ProtectedToolDyn {
     /// Create a new protected dynamic tool.
     pub fn new(tool: Arc<dyn Tool>, access_control: Arc<AccessControl>) -> Self {
-        Self {
-            inner: tool,
-            access_control,
-            audit_sink: None,
-        }
+        Self { inner: tool, access_control, audit_sink: None }
     }
 
     /// Create a new protected dynamic tool with audit logging.
@@ -201,11 +188,7 @@ impl ProtectedToolDyn {
         access_control: Arc<AccessControl>,
         audit_sink: Arc<dyn AuditSink>,
     ) -> Self {
-        Self {
-            inner: tool,
-            access_control,
-            audit_sink: Some(audit_sink),
-        }
+        Self { inner: tool, access_control, audit_sink: Some(audit_sink) }
     }
 }
 
@@ -245,14 +228,11 @@ impl Tool for ProtectedToolDyn {
 
         // Log audit event if sink is configured
         if let Some(sink) = &self.audit_sink {
-            let outcome = if check_result.is_ok() {
-                AuditOutcome::Allowed
-            } else {
-                AuditOutcome::Denied
-            };
-            let event = AuditEvent::tool_access(user_id, tool_name, outcome)
-                .with_session(ctx.session_id());
-            
+            let outcome =
+                if check_result.is_ok() { AuditOutcome::Allowed } else { AuditOutcome::Denied };
+            let event =
+                AuditEvent::tool_access(user_id, tool_name, outcome).with_session(ctx.session_id());
+
             // Log asynchronously (don't block on audit failure)
             let _ = sink.log(event).await;
         }
@@ -305,7 +285,7 @@ mod tests {
 
         let tool = MockTool::new("mock");
         let protected = tool.with_access_control(Arc::new(ac));
-        
+
         assert_eq!(protected.name(), "mock");
         assert_eq!(protected.description(), "Mock tool");
     }
