@@ -126,8 +126,12 @@ impl Llm for OllamaModel {
         }
 
         let response_stream = try_stream! {
-            if stream {
-                // Streaming mode
+            // When tools are present, use non-streaming mode because ollama-rs
+            // doesn't parse tool_calls in streaming responses
+            let use_streaming = stream && request.tools.is_empty();
+
+            if use_streaming {
+                // Streaming mode (only when no tools)
                 use futures::StreamExt;
 
                 let stream_result = client
@@ -156,7 +160,7 @@ impl Llm for OllamaModel {
                     }
                 }
             } else {
-                // Non-streaming mode
+                // Non-streaming mode (required when tools are present)
                 let response = client
                     .send_chat_messages(chat_request)
                     .await
