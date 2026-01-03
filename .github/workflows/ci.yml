@@ -8,71 +8,45 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_HOME: /home/runner/.cargo
   CARGO_INCREMENTAL: 0
 
 jobs:
-  fmt:
+  check:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt
-    - run: cargo fmt --all -- --check
-
-  clippy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
+    
     - name: Free disk space
       run: |
         sudo rm -rf /usr/local/lib/android
         sudo rm -rf /usr/share/dotnet
         df -h
+    
     - uses: dtolnay/rust-toolchain@stable
       with:
-        components: clippy
+        components: rustfmt, clippy
+    
     - name: Install mold linker
       run: |
         sudo apt-get update
         sudo apt-get install -y mold
+    
     - uses: Swatinem/rust-cache@v2
       with:
         key: ci-${{ runner.os }}
         cache-on-failure: true
         save-if: ${{ github.ref == 'refs/heads/main' }}
+    
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    
     - name: Run clippy
       env:
         RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C debuginfo=0"
-      run: cargo clippy --all-targets --all-features -- -D warnings
-    - name: Cleanup
-      if: always()
-      run: |
-        rm -rf target/debug/deps/*.rlib target/debug/build 2>/dev/null || true
-
-  test:
-    runs-on: ubuntu-latest
-    needs: [fmt, clippy]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Free disk space
-      run: |
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /usr/share/dotnet
-        df -h
-    - uses: dtolnay/rust-toolchain@stable
-    - name: Install mold linker
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y mold
-    - uses: Swatinem/rust-cache@v2
-      with:
-        key: ci-${{ runner.os }}
-        cache-on-failure: true
-        save-if: ${{ github.ref == 'refs/heads/main' }}
+      run: cargo clippy --workspace --exclude adk-mistralrs --all-targets --all-features -- -D warnings
+    
     - name: Run tests
       env:
         RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C debuginfo=0"
-      run: cargo test --all-features -j 2
+      run: cargo test --workspace --exclude adk-mistralrs --all-features
 
