@@ -1,17 +1,24 @@
-name: CI
+name: mistral.rs Integration
 
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'adk-mistralrs/**'
+      - '.github/workflows/mistralrs-tests.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'adk-mistralrs/**'
+      - '.github/workflows/mistralrs-tests.yml'
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
 
 jobs:
-  check:
+  mistralrs-check:
+    name: mistral.rs Check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -24,7 +31,7 @@ jobs:
     
     - uses: dtolnay/rust-toolchain@stable
       with:
-        components: rustfmt, clippy
+        components: clippy
     
     - name: Install mold linker
       run: |
@@ -33,20 +40,20 @@ jobs:
     
     - uses: Swatinem/rust-cache@v2
       with:
-        key: ci-${{ runner.os }}
+        key: mistralrs-${{ runner.os }}
         cache-on-failure: true
         save-if: ${{ github.ref == 'refs/heads/main' }}
-    
-    - name: Check formatting
-      run: cargo fmt --all -- --check
     
     - name: Run clippy
       env:
         RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C debuginfo=0"
-      run: cargo clippy --workspace --exclude adk-mistralrs --all-targets --all-features -- -D warnings
+      working-directory: adk-mistralrs
+      run: cargo clippy --all-targets -- -D warnings
     
     - name: Run tests
       env:
         RUSTFLAGS: "-C link-arg=-fuse-ld=mold -C debuginfo=0"
-      run: cargo test --workspace --exclude adk-mistralrs --all-features
-
+      working-directory: adk-mistralrs
+      run: |
+        cargo test --lib --tests
+        cargo test --doc

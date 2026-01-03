@@ -1,0 +1,74 @@
+[package]
+name = "adk-mistralrs"
+version = "0.1.9"
+edition = "2024"
+rust-version = "1.85.0"
+license = "MIT"
+authors = ["James Karanja Maina <james.karanja@zavora.ai>"]
+description = "mistral.rs integration for ADK-Rust - native local LLM inference (git-only, not published to crates.io)"
+repository = "https://github.com/zavora-ai/adk-rust"
+readme = "README.md"
+keywords = ["ai", "agent", "adk", "mistral", "llm", "local-inference"]
+categories = ["api-bindings", "asynchronous"]
+publish = false  # This crate is NOT published to crates.io
+
+[dependencies]
+# ADK core dependencies
+adk-core = { path = "../adk-core" }
+adk-telemetry = { path = "../adk-telemetry" }
+
+# Async runtime
+async-trait = "0.1"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+async-stream = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling and logging
+anyhow = "1.0"
+tracing = "0.1"
+thiserror = "2.0"
+
+# Utilities
+base64 = "0.21"
+indexmap = { version = "2.0", features = ["serde"] }
+image = "0.25"
+uuid = { version = "1.0", features = ["v4"] }
+
+# mistral.rs - native Rust LLM inference engine (git dependency)
+# Note: This is why this crate cannot be published to crates.io
+mistralrs = { git = "https://github.com/EricLBuehler/mistral.rs", branch = "master" }
+
+# Optional HTTP client for URL image loading
+reqwest = { version = "0.12", features = ["blocking"], optional = true }
+
+[dev-dependencies]
+proptest = "1.0"
+tokio-test = "0.4"
+criterion = { version = "0.5", features = ["async_tokio"] }
+
+[features]
+default = []
+
+# Enable URL-based image loading
+reqwest = ["dep:reqwest"]
+
+# Enable real inference benchmarks (requires model downloads)
+bench-inference = []
+
+# Accelerator features (passed through to mistralrs)
+cuda = ["mistralrs/cuda"]
+metal = ["mistralrs/metal"]
+mkl = ["mistralrs/mkl"]
+accelerate = ["mistralrs/accelerate"]
+
+# Flash attention variants (requires compatible hardware)
+flash-attn = ["cuda", "mistralrs/flash-attn"]
+cudnn = ["mistralrs/cudnn"]
+
+[[bench]]
+name = "inference_benchmark"
+harness = false
