@@ -99,3 +99,44 @@ pub async fn get_eval_sets(
     // Stub: Return empty array - eval sets not yet implemented
     Ok(Json(Vec::new()))
 }
+
+/// Get event data by event_id - returns event with invocationId for trace linking
+pub async fn get_event(
+    State(controller): State<DebugController>,
+    Path((app_name, _user_id, session_id, event_id)): Path<(String, String, String, String)>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    // Try to find trace data for this event_id
+    if let Some(exporter) = &controller.config.span_exporter {
+        let traces = exporter.get_session_trace(&session_id);
+        
+        // Find a trace with matching event_id
+        for attrs in traces {
+            if let Some(stored_event_id) = attrs.get("gcp.vertex.agent.event_id") {
+                if stored_event_id == &event_id {
+                    // Found matching trace - return event-like structure
+                    let invocation_id = attrs.get("gcp.vertex.agent.invocation_id")
+                        .cloned()
+                        .unwrap_or_default();
+                    
+                    return Ok(Json(serde_json::json!({
+                        "id": event_id,
+                        "invocationId": invocation_id,
+                        "appName": app_name,
+                        "sessionId": session_id,
+                        "attributes": attrs,
+                        "gcp.vertex.agent.llm_request": attrs.get("gcp.vertex.agent.llm_request"),
+                        "gcp.vertex.agent.llm_response": attrs.get("gcp.vertex.agent.llm_response")
+                    })));
+                }
+            }
+        }
+    }
+    
+    // Event not found - return a minimal stub to prevent UI errors
+    Ok(Json(serde_json::json!({
+        "id": event_id,
+        "invocationId": "",
+        "appName": app_name,
+        "sessionId": session_id
+    })))
+}
