@@ -1,6 +1,43 @@
 use adk_rust::prelude::*;
 use adk_rust::Launcher;
+use adk_rust::serde_json;
 use std::sync::Arc;
+
+/// Simple add tool that adds two numbers
+struct AddTool;
+
+#[adk_rust::async_trait]
+impl Tool for AddTool {
+    fn name(&self) -> &str {
+        "add"
+    }
+
+    fn description(&self) -> &str {
+        "Adds two numbers together. Input should be JSON with 'a' and 'b' fields."
+    }
+
+    fn parameters_schema(&self) -> Option<serde_json::Value> {
+        Some(serde_json::json!({
+            "type": "object",
+            "properties": {
+                "a": { "type": "number", "description": "First number" },
+                "b": { "type": "number", "description": "Second number" }
+            },
+            "required": ["a", "b"]
+        }))
+    }
+
+    async fn execute(
+        &self,
+        _ctx: Arc<dyn ToolContext>,
+        args: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let a: f64 = args.get("a").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let b: f64 = args.get("b").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let result = a + b;
+        Ok(serde_json::json!({ "result": result }))
+    }
+}
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -11,12 +48,12 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let model = GeminiModel::new(&api_key, "gemini-2.5-flash")?;
 
-    // Build agent with Google Search tool
+    // Build agent with tools
     let agent = LlmAgentBuilder::new("search_assistant")
-        .description("An assistant that can search the web")
-        .instruction("You are a helpful assistant. Use the search tool to find current information when needed.")
-        .model(Arc::new(model))
-        .tool(Arc::new(GoogleSearchTool::new()))  // Add search capability
+        .description("An assistant that can search the web and do math")
+        .instruction("You are a helpful assistant. Use the search tool for current info and the add tool for arithmetic.")
+        .model(Arc::new(model))        
+        .tool(Arc::new(AddTool))                   // Math capability
         .build()?;
 
     Launcher::new(Arc::new(agent)).run().await?;
