@@ -756,6 +756,12 @@ impl Agent for LlmAgent {
                             break;
                         }
                     }
+                    
+                    // Record LLM response to span before guard drops
+                    if let Some(ref content) = accumulated_content {
+                        let response_json = serde_json::to_string(content).unwrap_or_default();
+                        llm_span.record("gcp.vertex.agent.llm_response", &response_json);
+                    }
                 }
 
                 // After streaming/caching completes, check for function calls in accumulated content
