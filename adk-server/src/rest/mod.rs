@@ -96,6 +96,11 @@ pub fn create_app_with_a2a(config: ServerConfig, a2a_base_url: Option<&str>) -> 
             "/debug/graph/{app_name}/{user_id}/{session_id}/{event_id}",
             get(controllers::debug::get_graph),
         )
+        // UI-compatible graph route
+        .route(
+            "/apps/{app_name}/users/{user_id}/sessions/{session_id}/events/{event_id}/graph",
+            get(controllers::debug::get_graph),
+        )
         .with_state(debug_controller);
 
     let ui_router = Router::new()
