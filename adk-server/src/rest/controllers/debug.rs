@@ -39,12 +39,18 @@ pub async fn get_trace_by_event_id(
 }
 
 // Convert ADK exporter format to UI-compatible SpanData format
+// Field names must match adk-web Trace.ts interface exactly
 fn convert_to_span_data(attributes: &HashMap<String, String>) -> serde_json::Value {
+    let start_time: u64 = attributes.get("start_time").and_then(|s| s.parse().ok()).unwrap_or(0);
+    let end_time: u64 = attributes.get("end_time").and_then(|s| s.parse().ok()).unwrap_or(0);
+    
     serde_json::json!({
         "name": attributes.get("span_name").map_or("unknown", |v| v.as_str()),
-        "start_time": attributes.get("start_time").and_then(|s| s.parse::<u64>().ok()).unwrap_or(0),
-        "end_time": attributes.get("end_time").and_then(|s| s.parse::<u64>().ok()).unwrap_or(0),
-        "parent_id": null,
+        "span_id": attributes.get("span_id").map_or("", |v| v.as_str()),
+        "trace_id": attributes.get("trace_id").map_or("", |v| v.as_str()),
+        "parent_span_id": serde_json::Value::Null,  // Explicitly null to prevent nesting
+        "start_time": start_time,  // Must be number (nanoseconds)
+        "end_time": end_time,      // Must be number (nanoseconds)
         "attributes": attributes,
         "invoc_id": attributes.get("gcp.vertex.agent.invocation_id").map_or("", |v| v.as_str())
     })
