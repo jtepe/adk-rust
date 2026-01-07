@@ -21,28 +21,88 @@ ADK-Rust provides a comprehensive framework for building AI agents in Rust, feat
 
 **Status**: Production-ready, actively maintained
 
-## ADK-Rust Studio
+## Architecture
 
-[![adk-studio](https://img.shields.io/crates/v/adk-studio.svg)](https://crates.io/crates/adk-studio)
-![New](https://img.shields.io/badge/new-v0.2.0-brightgreen)
+![ADK-Rust Architecture](assets/architecture.png)
 
-A new visual development environment for building AI agents with drag-and-drop, powered by ADK-Rust:
+ADK-Rust follows a clean layered architecture from application interface down to foundational services.
 
-![ADK-Rust Studio - Support Router](adk-studio/docs/studio-screenshot.png)
+## Key Features
 
-```bash
-# Install and run
-cargo install adk-studio
-adk-studio
-```
+### Agent Types
 
-**Features**:
-- Drag-and-drop agent creation with ReactFlow canvas
-- Full agent palette: LLM, Sequential, Parallel, Loop, Router
-- Tools: Function, MCP, Browser, Google Search
-- Real-time chat with SSE streaming
-- Code generation: Compile visual designs to ADK-Rust
-- Build and run executables from Studio
+**LLM Agents**: Powered by large language models with tool use, function calling, and streaming responses.
+
+**Workflow Agents**: Deterministic orchestration patterns.
+- `SequentialAgent`: Execute agents in sequence
+- `ParallelAgent`: Execute agents concurrently
+- `LoopAgent`: Iterative execution with exit conditions
+
+**Custom Agents**: Implement the `Agent` trait for specialized behavior.
+
+**Realtime Voice Agents**: Build voice-enabled AI assistants with bidirectional audio streaming.
+
+**Graph Agents**: LangGraph-style workflow orchestration with state management and checkpointing.
+
+### Multi-Provider Support
+
+ADK supports multiple LLM providers with a unified API:
+
+| Provider | Model Examples | Feature Flag |
+|----------|---------------|--------------|
+| Gemini | `gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-2.5-pro` | (default) |
+| OpenAI | `gpt-5.2`, `gpt-5`, `gpt-4o`, `gpt-4o-mini` | `openai` |
+| Anthropic | `claude-opus-4-20250514`, `claude-sonnet-4-20250514` | `anthropic` |
+| DeepSeek | `deepseek-chat`, `deepseek-reasoner` | `deepseek` |
+| Groq | `llama-3.3-70b-versatile`, `mixtral-8x7b-32768` | `groq` |
+| Ollama | `llama3.2`, `qwen2.5`, `mistral` | `ollama` |
+| mistral.rs | Phi-3, Mistral, Llama, Gemma, LLaVa, FLUX | git dependency |
+
+All providers support streaming, function calling, and multimodal inputs (where available).
+
+### Tool System
+
+Built-in tools:
+- Function tools (custom Rust functions)
+- Google Search
+- Artifact loading
+- Loop termination
+
+**MCP Integration**: Connect to Model Context Protocol servers for extended capabilities.
+
+### Production Features
+
+- **Session Management**: In-memory and SQLite-backed sessions with state persistence
+- **Memory System**: Long-term memory with semantic search and vector embeddings
+- **Servers**: REST API with SSE streaming, A2A protocol for agent-to-agent communication
+- **Guardrails**: PII redaction, content filtering, JSON schema validation
+- **Observability**: OpenTelemetry tracing, structured logging
+
+## Core Crates
+
+| Crate | Purpose | Key Features |
+|-------|---------|--------------|
+| `adk-core` | Foundational traits and types | `Agent` trait, `Content`, `Part`, error types, streaming primitives |
+| `adk-agent` | Agent implementations | `LlmAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`, builder patterns |
+| `adk-model` | LLM integrations | Gemini, OpenAI, Anthropic, DeepSeek, Groq, Ollama clients, streaming, function calling |
+| `adk-gemini` | Gemini client | Google Gemini API client with streaming and multimodal support |
+| `adk-mistralrs` | Native local inference | mistral.rs integration, ISQ quantization, LoRA adapters (git-only) |
+| `adk-tool` | Tool system and extensibility | `FunctionTool`, Google Search, MCP protocol, schema validation |
+| `adk-session` | Session and state management | SQLite/in-memory backends, conversation history, state persistence |
+| `adk-artifact` | Artifact storage system | File-based storage, MIME type handling, image/PDF/video support |
+| `adk-memory` | Long-term memory | Vector embeddings, semantic search, Qdrant integration |
+| `adk-runner` | Agent execution runtime | Context management, event streaming, session lifecycle, callbacks |
+| `adk-server` | Production API servers | REST API, A2A protocol, middleware, health checks |
+| `adk-cli` | Command-line interface | Interactive REPL, session management, MCP server integration |
+| `adk-realtime` | Real-time voice agents | OpenAI Realtime API, Gemini Live API, bidirectional audio, VAD |
+| `adk-graph` | Graph-based workflows | LangGraph-style orchestration, state management, checkpointing, human-in-the-loop |
+| `adk-browser` | Browser automation | 46 WebDriver tools, navigation, forms, screenshots, PDF generation |
+| `adk-eval` | Agent evaluation | Test definitions, trajectory validation, LLM-judged scoring, rubrics |
+| `adk-guardrail` | Input/output validation | PII redaction, content filtering, JSON schema validation |
+| `adk-auth` | Access control | Role-based permissions, SSO/OAuth, audit logging |
+| `adk-telemetry` | Observability | Structured logging, OpenTelemetry tracing, span helpers |
+| `adk-ui` | Dynamic UI generation | 28 components, 10 templates, React client, streaming updates |
+| `adk-studio` | Visual development | Drag-and-drop agent builder, code generation, live testing |
 
 ## Quick Start
 
@@ -234,19 +294,12 @@ cargo run --example openai_tools --features openai
 # DeepSeek examples (requires --features deepseek)
 cargo run --example deepseek_basic --features deepseek
 cargo run --example deepseek_reasoner --features deepseek
-cargo run --example deepseek_tools --features deepseek
 
 # Groq examples (requires --features groq)
 cargo run --example groq_basic --features groq
-cargo run --example groq_tools --features groq
 
 # Ollama examples (requires --features ollama)
 cargo run --example ollama_basic --features ollama
-cargo run --example ollama_tools --features ollama
-cargo run --example ollama_mcp --features ollama        # MCP integration
-cargo run --example ollama_parallel --features ollama   # Parallel agents
-cargo run --example ollama_sequential --features ollama # Sequential pipeline
-cargo run --example ollama_supervisor --features ollama # Supervisor pattern
 
 # REST API server
 cargo run --example server
@@ -259,119 +312,30 @@ cargo run --example parallel_agent
 ls examples/
 ```
 
-## Building from Source
+## ADK-Rust Studio
 
-### Using Make (Recommended)
+[![adk-studio](https://img.shields.io/crates/v/adk-studio.svg)](https://crates.io/crates/adk-studio)
+![New](https://img.shields.io/badge/new-v0.2.0-brightgreen)
 
-```bash
-# See all available commands
-make help
+A visual development environment for building AI agents with drag-and-drop:
 
-# Build all crates (CPU-only, works on all systems)
-make build
-
-# Build with all features (safe - adk-mistralrs excluded)
-make build-all
-
-# Build all examples
-make examples
-
-# Run tests
-make test
-
-# Run clippy lints
-make clippy
-```
-
-### Manual Build
+![ADK-Rust Studio - Support Router](adk-studio/docs/studio-screenshot.png)
 
 ```bash
-# Build workspace (CPU-only)
-cargo build --workspace
-
-# Build with all features (works without CUDA)
-cargo build --workspace --all-features
-
-# Build examples with common features
-cargo build --examples --features "openai,anthropic,deepseek,ollama,groq,browser,guardrails,sso"
+# Install and run
+cargo install adk-studio
+adk-studio
 ```
 
-### Local LLM with mistral.rs
+**Features**:
+- Drag-and-drop agent creation with ReactFlow canvas
+- Full agent palette: LLM, Sequential, Parallel, Loop, Router
+- Tools: Function, MCP, Browser, Google Search
+- Real-time chat with SSE streaming
+- Code generation: Compile visual designs to ADK-Rust
+- Build and run executables from Studio
 
-`adk-mistralrs` is excluded from the workspace by default to allow `--all-features` to work without CUDA toolkit. Build it explicitly:
-
-```bash
-# CPU-only (works on all systems)
-make build-mistralrs
-# or: cargo build --manifest-path adk-mistralrs/Cargo.toml
-
-# macOS with Apple Silicon (Metal GPU)
-make build-mistralrs-metal
-# or: cargo build --manifest-path adk-mistralrs/Cargo.toml --features metal
-
-# NVIDIA GPU (requires CUDA toolkit)
-make build-mistralrs-cuda
-# or: cargo build --manifest-path adk-mistralrs/Cargo.toml --features cuda
-```
-
-### Running mistralrs Examples
-
-```bash
-# Build and run examples with mistralrs
-cargo run --example mistralrs_basic --features mistralrs
-
-# With Metal GPU acceleration (macOS)
-cargo run --example mistralrs_basic --features mistralrs,metal
-```
-
-## Architecture
-
-![ADK-Rust Architecture](assets/architecture.png)
-
-ADK-Rust follows a clean layered architecture from application interface down to foundational services.
-
-### Core Crates
-
-| Crate | Purpose | Key Features |
-|-------|---------|--------------|
-| `adk-core` | Foundational traits and types | `Agent` trait, `Content`, `Part`, error types, streaming primitives |
-| `adk-agent` | Agent implementations | `LlmAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`, builder patterns |
-| `adk-model` | LLM integrations | Gemini, OpenAI, Anthropic, DeepSeek, Groq, Ollama clients, streaming, function calling |
-| `adk-gemini` | Gemini client | Google Gemini API client with streaming and multimodal support |
-| `adk-mistralrs` | Native local inference | mistral.rs integration, ISQ quantization, LoRA adapters (git-only) |
-| `adk-tool` | Tool system and extensibility | `FunctionTool`, Google Search, MCP protocol, schema validation |
-| `adk-session` | Session and state management | SQLite/in-memory backends, conversation history, state persistence |
-| `adk-artifact` | Artifact storage system | File-based storage, MIME type handling, image/PDF/video support |
-| `adk-memory` | Long-term memory | Vector embeddings, semantic search, Qdrant integration |
-| `adk-runner` | Agent execution runtime | Context management, event streaming, session lifecycle, callbacks |
-| `adk-server` | Production API servers | REST API, A2A protocol, middleware, health checks |
-| `adk-cli` | Command-line interface | Interactive REPL, session management, MCP server integration |
-| `adk-realtime` | Real-time voice agents | OpenAI Realtime API, Gemini Live API, bidirectional audio, VAD |
-| `adk-graph` | Graph-based workflows | LangGraph-style orchestration, state management, checkpointing, human-in-the-loop |
-| `adk-browser` | Browser automation | 46 WebDriver tools, navigation, forms, screenshots, PDF generation |
-| `adk-eval` | Agent evaluation | Test definitions, trajectory validation, LLM-judged scoring, rubrics |
-| `adk-guardrail` | Input/output validation | PII redaction, content filtering, JSON schema validation |
-| `adk-auth` | Access control | Role-based permissions, SSO/OAuth, audit logging |
-| `adk-telemetry` | Observability | Structured logging, OpenTelemetry tracing, span helpers |
-| `adk-ui` | Dynamic UI generation | 28 components, 10 templates, React client, streaming updates |
-| `adk-studio` | Visual development | Drag-and-drop agent builder, code generation, live testing |
-
-## Key Features
-
-### Agent Types
-
-**LLM Agents**: Powered by large language models with tool use, function calling, and streaming responses.
-
-**Workflow Agents**: Deterministic orchestration patterns.
-- `SequentialAgent`: Execute agents in sequence
-- `ParallelAgent`: Execute agents concurrently
-- `LoopAgent`: Iterative execution with exit conditions
-
-**Custom Agents**: Implement the `Agent` trait for specialized behavior.
-
-**Realtime Voice Agents**: Build voice-enabled AI assistants with bidirectional audio streaming.
-
-**Graph Agents**: LangGraph-style workflow orchestration with state management and checkpointing.
+## Advanced Features
 
 ### Realtime Voice Agents
 
@@ -568,43 +532,6 @@ assert!(report.all_passed());
 - Safety and hallucination detection
 - Detailed reporting with failure analysis
 
-### Tool System
-
-Built-in tools:
-- Function tools (custom Rust functions)
-- Google Search
-- Artifact loading
-- Loop termination
-
-**MCP Integration**: Connect to Model Context Protocol servers for extended capabilities.
-
-**XML Tool Call Markup**: For models without native function calling, ADK supports XML-based tool call parsing:
-```text
-<tool_call>
-function_name
-<arg_key>param1</arg_key>
-<arg_value>value1</arg_value>
-</tool_call>
-```
-
-### Multi-Provider Support
-
-ADK supports multiple LLM providers with a unified API:
-
-| Provider | Model Examples | Feature Flag |
-|----------|---------------|--------------|
-| Gemini | `gemini-3-pro-preview`, `gemini-2.5-flash`, `gemini-2.5-pro` | (default) |
-| OpenAI | `gpt-5.2`, `gpt-5`, `gpt-4o`, `gpt-4o-mini` | `openai` |
-| Anthropic | `claude-opus-4-20250514`, `claude-sonnet-4-20250514` | `anthropic` |
-| DeepSeek | `deepseek-chat`, `deepseek-reasoner` | `deepseek` |
-| Groq | `llama-3.3-70b-versatile`, `mixtral-8x7b-32768` | `groq` |
-| Ollama | `llama3.2`, `qwen2.5`, `mistral` | `ollama` |
-| mistral.rs | Phi-3, Mistral, Llama, Gemma, LLaVa, FLUX | git dependency |
-
-All providers support streaming, function calling, and multimodal inputs (where available).
-
-**DeepSeek-specific features**: Thinking mode (chain-of-thought reasoning), context caching (10x cost reduction for repeated prefixes).
-
 ### Local Inference with mistral.rs
 
 For native local inference without external dependencies, use the `adk-mistralrs` crate:
@@ -643,29 +570,6 @@ adk-mistralrs = { git = "https://github.com/zavora-ai/adk-rust" }
 
 **Features**: ISQ quantization, PagedAttention, multi-GPU splitting, LoRA/X-LoRA adapters, vision/speech/diffusion models, MCP integration.
 
-### Production Features
-
-**Session Management**:
-- In-memory and database-backed sessions
-- Conversation history and state persistence
-- SQLite support for production deployments
-
-**Memory System**:
-- Long-term memory with semantic search
-- Vector embeddings for context retrieval
-- Scalable knowledge storage
-
-**Servers**:
-- REST API with streaming support (SSE)
-- A2A protocol for agent-to-agent communication
-- Health checks and monitoring endpoints
-
-## Documentation
-
-- **Website**: [adk-rust.com](https://adk-rust.com) - Official documentation and guides
-- **API Reference**: [docs.rs/adk-rust](https://docs.rs/adk-rust) - Full API documentation
-- **Examples**: [examples/README.md](examples/README.md) - 80+ working examples with detailed explanations
-
 ### Dynamic UI Generation
 
 The `adk-ui` crate enables agents to render rich user interfaces:
@@ -689,42 +593,70 @@ let agent = builder.build()?;
 
 **Features**: 28 components, 10 templates, dark mode, streaming updates, server-side validation
 
-## Development
 
-### Testing
+## Building from Source
+
+### Using Make (Recommended)
 
 ```bash
-# Run all tests
-cargo test
+# See all available commands
+make help
 
-# Test specific crate
-cargo test --package adk-core
+# Build all crates (CPU-only, works on all systems)
+make build
 
-# With output
-cargo test -- --nocapture
+# Build with all features (safe - adk-mistralrs excluded)
+make build-all
+
+# Build all examples
+make examples
+
+# Run tests
+make test
+
+# Run clippy lints
+make clippy
 ```
 
-### Code Quality
+### Manual Build
 
 ```bash
-# Linting
-cargo clippy
+# Build workspace (CPU-only)
+cargo build --workspace
 
-# Formatting
-cargo fmt
+# Build with all features (works without CUDA)
+cargo build --workspace --all-features
 
-# Security audit
-cargo audit
+# Build examples with common features
+cargo build --examples --features "openai,anthropic,deepseek,ollama,groq,browser,guardrails,sso"
 ```
 
-### Building
+### Local LLM with mistral.rs
+
+`adk-mistralrs` is excluded from the workspace by default to allow `--all-features` to work without CUDA toolkit. Build it explicitly:
 
 ```bash
-# Development build
-cargo build
+# CPU-only (works on all systems)
+make build-mistralrs
+# or: cargo build --manifest-path adk-mistralrs/Cargo.toml
 
-# Optimized release build
-cargo build --release
+# macOS with Apple Silicon (Metal GPU)
+make build-mistralrs-metal
+# or: cargo build --manifest-path adk-mistralrs/Cargo.toml --features metal
+
+# NVIDIA GPU (requires CUDA toolkit)
+make build-mistralrs-cuda
+# or: cargo build --manifest-path adk-mistralrs/Cargo.toml --features cuda
+```
+
+### Running mistralrs Examples
+
+```bash
+# Build and run examples with mistralrs
+cargo run --example mistralrs_basic --features mistralrs
+
+# With Metal GPU acceleration (macOS)
+cargo run --example mistralrs_basic --features mistralrs,metal
 ```
 
 ## Use as Library
@@ -836,6 +768,50 @@ See [examples/](examples/) directory for complete, runnable examples:
 - `web/` - Web UI with streaming
 - `research_paper/` - Complex multi-agent workflow
 
+## Development
+
+### Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Test specific crate
+cargo test --package adk-core
+
+# With output
+cargo test -- --nocapture
+```
+
+### Code Quality
+
+```bash
+# Linting
+cargo clippy
+
+# Formatting
+cargo fmt
+
+# Security audit
+cargo audit
+```
+
+### Building
+
+```bash
+# Development build
+cargo build
+
+# Optimized release build
+cargo build --release
+```
+
+## Documentation
+
+- **Website**: [adk-rust.com](https://adk-rust.com) - Official documentation and guides
+- **API Reference**: [docs.rs/adk-rust](https://docs.rs/adk-rust) - Full API documentation
+- **Examples**: [examples/README.md](examples/README.md) - 80+ working examples with detailed explanations
+
 ## Performance
 
 Optimized for production use:
@@ -884,6 +860,4 @@ Contributions welcome! Please open an issue or pull request on GitHub.
 | Priority | Feature | Target | Status |
 |----------|---------|--------|--------|
 | 🟡 P1 | [Cloud Integrations](docs/roadmap/cloud-integrations.md) | Q2-Q3 2026 | Planned |
-| 🟡 P1 | [Graph Visualization](docs/roadmap/graph-agent-design.md) | Q2 2026 | Planned |
 | 🟢 P2 | [Enterprise Features](docs/roadmap/enterprise.md) | Q4 2026 | Planned |
-| 🟢 P2 | [VertexAI Sessions](docs/roadmap/vertex-ai-session.md) | Q2 2026 | Planned |
