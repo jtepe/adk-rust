@@ -118,6 +118,21 @@ path = "openai_structured/main.rs"
 required-features = ["openai"]
 
 [[example]]
+name = "openai_structured_basic"
+path = "openai_structured_basic/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "openai_structured_strict"
+path = "openai_structured_strict/main.rs"
+required-features = ["openai"]
+
+[[example]]
+name = "openai_local"
+path = "openai_local/main.rs"
+required-features = ["openai"]
+
+[[example]]
 name = "debug_openai_error"
 path = "debug_openai_error/main.rs"
 required-features = ["openai"]
@@ -397,6 +412,11 @@ required-features = ["ollama"]
 [[example]]
 name = "ollama_supervisor"
 path = "ollama_supervisor/main.rs"
+required-features = ["ollama"]
+
+[[example]]
+name = "ollama_structured"
+path = "ollama_structured/main.rs"
 required-features = ["ollama"]
 
 [[example]]
